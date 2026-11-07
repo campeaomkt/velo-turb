@@ -38,6 +38,8 @@ export default function App() {
   const [selectedThumbSniperVideo, setSelectedThumbSniperVideo] = useState<VideoItem | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
+  const [uploadPreselectedFolderId, setUploadPreselectedFolderId] = useState<string | undefined>(undefined);
+
   // Computations
   const nonTrashVideos = videos.filter((v) => !v.isTrash);
   const totalPlays = nonTrashVideos.reduce((acc, v) => acc + v.plays, 0);
@@ -67,10 +69,30 @@ export default function App() {
     const newFolder: Folder = {
       id: `fld_${Math.random().toString(36).substring(2, 7)}`,
       name,
-      color: '#64748b',
+      color: '#0066FF',
     };
     setFolders([...folders, newFolder]);
     setActiveFolderId(newFolder.id);
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    // Remove folder
+    setFolders(folders.filter((f) => f.id !== folderId));
+    // Any video inside this folder is safely moved to root ('all')
+    setVideos(videos.map((v) => (v.folderId === folderId ? { ...v, folderId: 'all' } : v)));
+    if (activeFolderId === folderId) {
+      setActiveFolderId('all');
+    }
+  };
+
+  const handleMoveVideos = (videoIds: string[], targetFolderId: string) => {
+    setVideos(
+      videos.map((v) => (videoIds.includes(v.id) ? { ...v, folderId: targetFolderId } : v))
+    );
+  };
+
+  const handleRenameFolder = (folderId: string, newName: string) => {
+    setFolders(folders.map((f) => (f.id === folderId ? { ...f, name: newName } : f)));
   };
 
   const handleCreateABTest = (newTest: ABTest) => {
@@ -105,7 +127,13 @@ export default function App() {
               activeFolderId={activeFolderId}
               onSelectFolder={setActiveFolderId}
               onCreateFolder={handleCreateFolder}
-              onOpenUpload={() => setShowUploadModal(true)}
+              onDeleteFolder={handleDeleteFolder}
+              onMoveVideos={handleMoveVideos}
+              onRenameFolder={handleRenameFolder}
+              onOpenUpload={(preselectedFolderId) => {
+                setUploadPreselectedFolderId(preselectedFolderId);
+                setShowUploadModal(true);
+              }}
               onOpenEmbed={(video) => setSelectedEmbedVideo(video)}
               onOpenSimulator={(video) => setSelectedSimulatorVideo(video)}
               onOpenEdit={(video) => setSelectedEditVideo(video)}
@@ -203,9 +231,16 @@ export default function App() {
       {showUploadModal && (
         <UploadVideoModal
           folders={folders.filter((f) => f.id !== 'all')}
+          initialFolderId={uploadPreselectedFolderId || (activeFolderId !== 'all' ? activeFolderId : undefined)}
           isOpen={showUploadModal}
-          onClose={() => setShowUploadModal(false)}
-          onUploadSuccess={handleUploadSuccess}
+          onClose={() => {
+            setShowUploadModal(false);
+            setUploadPreselectedFolderId(undefined);
+          }}
+          onUploadSuccess={(newVideo) => {
+            handleUploadSuccess(newVideo);
+            setUploadPreselectedFolderId(undefined);
+          }}
         />
       )}
 

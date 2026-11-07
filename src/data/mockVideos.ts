@@ -2,6 +2,7 @@ import { VideoItem, Folder, ABTest } from '../types';
 
 export const INITIAL_FOLDERS: Folder[] = [
   { id: 'all', name: 'Todas as Pastas', color: '#64748b' },
+  { id: 'fld_pasta_teste', name: 'PASTA TESTE', color: '#0066FF' },
   { id: 'fld_vsl_core', name: 'VSL Principal - Nicho Hot', color: '#E11D48' },
   { id: 'fld_upsell', name: 'Upsells & Downsells', color: '#8B5CF6' },
   { id: 'fld_captura', name: 'Páginas de Captura', color: '#10B981' },
@@ -9,6 +10,51 @@ export const INITIAL_FOLDERS: Folder[] = [
 ];
 
 export const INITIAL_VIDEOS: VideoItem[] = [
+  {
+    id: 'vt_vsl_dedilhados',
+    title: 'MINI VSL DEDILHADOS E ARPEJOS LATAM - 15-04-26.mov',
+    description: 'Mini VSL de alta conversão para teclado e arranjos.',
+    folderId: 'all', // Na raiz da biblioteca
+    videoUrl: 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/playlist.m3u8',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80',
+    videoType: 'hls',
+    bunnyLibraryId: '802485',
+    bunnyVideoId: 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7',
+    bunnyCdnHostname: 'vz-de50afce-82d.b-cdn.net',
+    duration: 537,
+    plays: 0,
+    views: 0,
+    playRate: 0,
+    pitchTime: 500,
+    retentionAtPitch: 0,
+    createdAt: '07/11/2026',
+    settings: {
+      primaryColor: '#0066FF',
+      smartAutoplay: true,
+      smartAutoplayText: 'Seu vídeo já começou! Clique para ouvir áudio 🔊',
+      smartAutoplayTheme: 'yellow',
+      fakeProgressBar: true,
+      fakeProgressSpeed: 'fast',
+      onlyProgressBar: true,
+      hideControls: false,
+      allowPause: true,
+      resumePlayback: true,
+      speedControl: true,
+      antiDownload: true,
+      domainLock: '*',
+      pitchDelaySeconds: 500,
+      pulsingCta: true,
+      ctaText: 'QUERO TER SOM PROFISSIONAL',
+      ctaSubtext: 'Acesso imediato • Sons do Nord Stage • Compatível com celular',
+      ctaUrl: 'https://seusite.com.br/checkout',
+      showWatermark: false,
+      thumbSniper: {
+        enabled: true,
+        type: 'template',
+        templateId: 'ts_01',
+      },
+    },
+  },
   {
     id: 'vt_vsl_aevo_pro',
     title: 'AEVO PRO BR - Pack Audio Evolution',
@@ -27,7 +73,7 @@ export const INITIAL_VIDEOS: VideoItem[] = [
     pitchTime: 500,
     retentionAtPitch: 71.4,
     isTop: true,
-    createdAt: '2026-11-07',
+    createdAt: '07/11/2026',
     settings: {
       primaryColor: '#E11D48',
       smartAutoplay: true,

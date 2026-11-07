@@ -5,6 +5,7 @@ import { detectAndNormalizeVideoUrl, DEFAULT_BUNNY_CDN_HOSTNAME, NormalizedVideo
 
 interface UploadVideoModalProps {
   folders: Folder[];
+  initialFolderId?: string;
   isOpen: boolean;
   onClose: () => void;
   onUploadSuccess: (newVideo: VideoItem) => void;
@@ -12,6 +13,7 @@ interface UploadVideoModalProps {
 
 export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
   folders,
+  initialFolderId,
   isOpen,
   onClose,
   onUploadSuccess,
@@ -20,12 +22,18 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
   const [title, setTitle] = useState('');
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [customCdnHost, setCustomCdnHost] = useState(DEFAULT_BUNNY_CDN_HOSTNAME);
-  const [folderId, setFolderId] = useState(folders[0]?.id || 'all');
+  const [folderId, setFolderId] = useState(initialFolderId || folders[0]?.id || 'all');
   const [pitchDelaySec, setPitchDelaySec] = useState(15);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen && initialFolderId) {
+      setFolderId(initialFolderId);
+    }
+  }, [isOpen, initialFolderId]);
 
   if (!isOpen) return null;
 
