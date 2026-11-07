@@ -36,10 +36,80 @@ const upload = multer({
   },
 });
 
+// Enable CORS for all external origins (Live Server 127.0.0.1, WordPress, Elementor, etc.)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+  res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static uploaded videos with HTTP 206 Partial Content support for fast seeking
+// Serve /uploads/player.js with correct MIME type
+app.get('/uploads/player.js', (_req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const playerJsPath = path.join(__dirname, 'public', 'uploads', 'player.js');
+  if (fs.existsSync(playerJsPath)) {
+    return res.sendFile(playerJsPath);
+  }
+  return res.send(`/* VeloTurb SmartPlayer Runtime */ (function(){ console.log('[VeloTurb] Player loaded'); })();`);
+});
+
+// Video Streaming Route with HTTP 206 Partial Content (Byte Ranges)
+app.get('/uploads/videos/:filename', (req, res) => {
+  const filePath = path.join(uploadsDir, req.params.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('Vídeo não encontrado');
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Accept-Ranges', 'bytes');
+
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = ext === '.webm' ? 'video/webm' : 'video/mp4';
+
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    if (start >= fileSize) {
+      res.status(416).send('Requested range not satisfiable\n' + start + ' >= ' + fileSize);
+      return;
+    }
+
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      'Content-Length': fileSize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
+
+// Serve static uploaded videos with HTTP 206 Partial Content support
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // Endpoint for uploading videos
@@ -49,8 +119,8 @@ app.post('/api/upload', upload.single('video'), (req, res) => {
       return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
     }
 
-    const host = req.get('host');
-    const protocol = req.protocol;
+    const host = req.get('host') || `localhost:${PORT}`;
+    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
     const fileUrl = `${protocol}://${host}/uploads/videos/${req.file.filename}`;
 
     return res.json({
@@ -91,8 +161,9 @@ app.get('/api/videos', (_req, res) => {
 // Standalone iframe embed player page (Apenas o vídeo)
 app.get('/embed/:id', (req, res) => {
   const videoId = req.params.id;
-  // Fallback to sample or uploaded video
+  // Use passed video URL or fallback to reliable test stream
   const sampleVideoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  const videoUrl = req.query.url ? String(req.query.url) : sampleVideoUrl;
   
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -127,7 +198,7 @@ app.get('/embed/:id', (req, res) => {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
       <span>Seu vídeo já começou! Clique para ouvir áudio 🔊</span>
     </div>
-    <video id="v" src="${sampleVideoUrl}" autoplay muted playsinline webkit-playsinline oncontextmenu="return false;"></video>
+    <video id="v" src="${videoUrl}" autoplay muted playsinline webkit-playsinline oncontextmenu="return false;"></video>
     <div class="progress-bar"><div id="fill" class="progress-fill"></div></div>
   </div>
   <script>

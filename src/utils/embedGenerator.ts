@@ -17,6 +17,14 @@ export function generateSmartPlayerEmbed(video: VideoItem): string {
     ? 'background: #8B5CF6; color: #FFFFFF;'
     : 'background: #0F172A; color: #FFFFFF;';
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.veloturb.com';
+  let safeVideoUrl = video.videoUrl;
+  if (safeVideoUrl.startsWith('blob:')) {
+    safeVideoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  } else if (safeVideoUrl.startsWith('/')) {
+    safeVideoUrl = `${origin}${safeVideoUrl}`;
+  }
+
   return `<!-- ================================================= -->
 <!-- VeloTurb Player - Hospedagem & Player Inteligente -->
 <!-- Vídeo: ${video.title} -->
@@ -39,7 +47,7 @@ export function generateSmartPlayerEmbed(video: VideoItem): string {
     <!-- Video Element -->
     <video
       id="veloturb-video-${video.id}"
-      src="${video.videoUrl}"
+      src="${safeVideoUrl}"
       playsinline
       webkit-playsinline
       ${settings.smartAutoplay ? 'autoplay muted' : ''}

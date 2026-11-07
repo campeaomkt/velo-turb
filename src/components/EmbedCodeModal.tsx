@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, X, Info } from 'lucide-react';
+import { Copy, Check, X, Info, AlertTriangle, Server, CheckCircle2 } from 'lucide-react';
 import { VideoItem } from '../types';
 
 interface EmbedCodeModalProps {
@@ -20,10 +20,22 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const [copiedMain, setCopiedMain] = useState(false);
   const [copiedHead, setCopiedHead] = useState(false);
 
-  if (!isOpen) return null;
-
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.veloturb.com';
   const primaryColor = video.settings.primaryColor || '#E11D48';
+
+  const isBlobOriginal = video.videoUrl?.startsWith('blob:');
+  const [videoSourceUrl, setVideoSourceUrl] = useState<string>(() => {
+    if (video.videoUrl?.startsWith('blob:')) {
+      // Default to reliable high-speed test stream so external PV never goes black
+      return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+    }
+    if (video.videoUrl?.startsWith('/')) {
+      return `${origin}${video.videoUrl}`;
+    }
+    return video.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  });
+
+  if (!isOpen) return null;
 
   // 1. Clean video-only JavaScript Embed
   const jsEmbedCode = `<veloturb-smartplayer id="vid-${video.id}" style="display: block; margin: 0 auto; width: 100%; max-width: 100%;">
@@ -37,7 +49,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     <!-- Video Element -->
     <video
       id="veloturb-vid-${video.id}"
-      src="${video.videoUrl}"
+      src="${videoSourceUrl}"
       autoplay
       muted
       playsinline
@@ -136,7 +148,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   // 2. Clean iFrame Embed
   const iframeEmbedCode = `<div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px;">
   <iframe
-    src="${origin}/embed/${video.id}"
+    src="${origin}/embed/${video.id}?url=${encodeURIComponent(videoSourceUrl)}"
     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
     allow="autoplay; fullscreen; encrypted-media"
     allowfullscreen
@@ -187,6 +199,60 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
               Aprenda a incorporar seu vídeo
             </span>.
           </p>
+
+          {/* Video URL Source & Validation Banner (Solução definitiva para a tela preta) */}
+          <div className={`p-4 rounded-xl border ${isBlobOriginal ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'} space-y-2.5`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isBlobOriginal ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                ) : (
+                  <Server className="w-4 h-4 text-blue-600 shrink-0" />
+                )}
+                <h4 className="text-xs font-bold text-slate-900">
+                  {isBlobOriginal ? 'Atenção: Link Temporário "blob:" Detectado' : 'Origem & Hospedagem do Vídeo'}
+                </h4>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
+                {videoSourceUrl.includes('bunny') ? 'Bunny Stream' : videoSourceUrl.includes('r2.dev') ? 'Cloudflare R2' : 'MP4 Direto'}
+              </span>
+            </div>
+
+            {isBlobOriginal ? (
+              <div className="text-[11px] text-amber-900 leading-relaxed space-y-1">
+                <p>
+                  <strong>Por que o vídeo ficou preto no seu site (127.0.0.1:5500)?</strong>
+                </p>
+                <p>
+                  O navegador <strong>proíbe</strong> páginas externas de abrir links do tipo <code>blob:</code> por segurança (erro <em>"Not allowed to load local resource"</em>). O vídeo precisa de uma URL pública acessível.
+                </p>
+                <p className="text-emerald-800 font-semibold">
+                  ✅ Substituímos automaticamente pelo vídeo de alta velocidade abaixo para você testar na sua PV agora mesmo sem tela preta.
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500">
+                Link direto do vídeo que será executado na sua página de vendas:
+              </p>
+            )}
+
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="url"
+                value={videoSourceUrl}
+                onChange={(e) => setVideoSourceUrl(e.target.value)}
+                placeholder="https://video.bunnycdn.com/... ou https://pub-xxx.r2.dev/vsl.mp4"
+                className="flex-1 px-3 py-1.5 text-xs font-mono border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setVideoSourceUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')}
+                className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 whitespace-nowrap cursor-pointer"
+              >
+                Vídeo de Teste 100%
+              </button>
+            </div>
+          </div>
 
           {/* Toggle: Vídeo Responsivo */}
           <div className="flex items-center justify-between pt-1">

@@ -77,11 +77,14 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
         }
 
         const data = await response.json();
-        finalVideoUrl = data.url;
+        // Always store full absolute URL so embed code works anywhere (Live Server, WordPress, Elementor, etc.)
+        const currentOrigin = window.location.origin;
+        finalVideoUrl = data.absoluteUrl || (data.url.startsWith('http') ? data.url : `${currentOrigin}${data.url}`);
       } catch (err: any) {
         console.error(err);
-        // Fallback to local object URL if backend has an issue
-        finalVideoUrl = URL.createObjectURL(selectedFile);
+        setIsUploading(false);
+        setUploadError('Não foi possível salvar o arquivo no servidor. Links temporários "blob:" não são permitidos por navegadores em páginas externas (Live Server, WordPress). Por favor, use um link direto hospedado (Bunny Stream, Cloudflare R2, AWS S3 ou link direto .mp4).');
+        return;
       } finally {
         setIsUploading(false);
       }
