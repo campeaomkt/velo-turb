@@ -48,6 +48,10 @@ export interface VideoItem {
   retentionAtPitch: number; // % viewer retention at pitch
   settings: PlayerSettings;
   createdAt: string;
+  videoType?: 'hls' | 'mp4';
+  bunnyVideoId?: string;
+  bunnyLibraryId?: string;
+  bunnyCdnHostname?: string;
   isTrash?: boolean;
   isTop?: boolean;
 }

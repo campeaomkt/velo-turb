@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import { detectAndNormalizeVideoUrl, DEFAULT_BUNNY_CDN_HOSTNAME } from './src/utils/urlDetector.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,13 +11,152 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Ensure uploads folder exists
+// Diretórios de dados e uploads
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
 const uploadsDir = path.join(__dirname, 'public', 'uploads', 'videos');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Multer storage configuration
+// Arquivo de configuração persistente
+const configFile = path.join(dataDir, 'config.json');
+let appConfig = {
+  bunnyCdnHostname: process.env.BUNNY_CDN_HOSTNAME || DEFAULT_BUNNY_CDN_HOSTNAME,
+};
+
+if (fs.existsSync(configFile)) {
+  try {
+    appConfig = { ...appConfig, ...JSON.parse(fs.readFileSync(configFile, 'utf-8')) };
+  } catch (e) {
+    console.warn('[VeloTurb Server] Falha ao ler config.json, usando padrão:', e);
+  }
+}
+
+function saveConfig() {
+  try {
+    fs.writeFileSync(configFile, JSON.stringify(appConfig, null, 2));
+  } catch (e) {
+    console.error('[VeloTurb Server] Erro ao salvar config.json:', e);
+  }
+}
+
+// Banco de dados JSON de vídeos persistente
+const videosDbFile = path.join(dataDir, 'videos_db.json');
+let videosDb: Record<string, any> = {};
+
+// Vídeos padrão pré-carregados (para teste imediato)
+const SEED_VIDEOS = [
+  {
+    id: 'vt_vsl_98214',
+    title: 'VSL Oferta Principal - Protocolo 21 Dias (Versão Escala)',
+    description: 'Vídeo principal da página de vendas para tráfego frio no Meta Ads e TikTok Ads.',
+    folderId: 'fld_vsl_core',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    videoType: 'mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80',
+    duration: 596,
+    plays: 148920,
+    views: 215400,
+    playRate: 69.1,
+    pitchTime: 15,
+    retentionAtPitch: 52.4,
+    createdAt: '2026-11-01',
+    settings: {
+      primaryColor: '#E11D48',
+      smartAutoplay: true,
+      smartAutoplayText: 'Seu vídeo já começou! Clique para ouvir áudio',
+      smartAutoplayTheme: 'yellow',
+      fakeProgressBar: true,
+      fakeProgressSpeed: 'fast',
+      onlyProgressBar: true,
+      hideControls: false,
+      allowPause: true,
+      resumePlayback: true,
+      speedControl: true,
+      antiDownload: true,
+      domainLock: '*',
+      pitchDelaySeconds: 15,
+      pulsingCta: true,
+      ctaText: 'SIM! QUERO GARANTIR MINHA VAGA COM 50% OFF',
+      ctaSubtext: 'Acesso imediato • Garantia de 7 dias • Compra 100% Segura',
+      ctaUrl: 'https://pay.kiwify.com.br/checkout-exemplo',
+      showWatermark: false,
+      thumbSniper: { enabled: true, templateId: 'ts_01' },
+    },
+  },
+  {
+    id: 'vt_vsl_bunny_demo',
+    title: 'VSL Bunny Stream HLS - Alta Conversão (Library 802485)',
+    description: 'Vídeo transcodificado em HLS adaptativo pelo Bunny Stream para carregamento instantâneo.',
+    folderId: 'fld_vsl_core',
+    videoUrl: `https://${appConfig.bunnyCdnHostname}/a818fa3d-82ba-4162-81d0-9a8ad66f0d1f/playlist.m3u8`,
+    videoType: 'hls',
+    bunnyVideoId: 'a818fa3d-82ba-4162-81d0-9a8ad66f0d1f',
+    bunnyLibraryId: '802485',
+    bunnyCdnHostname: appConfig.bunnyCdnHostname,
+    thumbnailUrl: `https://${appConfig.bunnyCdnHostname}/a818fa3d-82ba-4162-81d0-9a8ad66f0d1f/thumbnail.jpg`,
+    duration: 540,
+    plays: 94320,
+    views: 132000,
+    playRate: 71.5,
+    pitchTime: 20,
+    retentionAtPitch: 64.2,
+    createdAt: '2026-11-07',
+    settings: {
+      primaryColor: '#E11D48',
+      smartAutoplay: true,
+      smartAutoplayText: 'Seu vídeo já começou! Clique para ouvir áudio',
+      smartAutoplayTheme: 'yellow',
+      fakeProgressBar: true,
+      fakeProgressSpeed: 'fast',
+      onlyProgressBar: true,
+      hideControls: false,
+      allowPause: true,
+      resumePlayback: true,
+      speedControl: true,
+      antiDownload: true,
+      domainLock: '*',
+      pitchDelaySeconds: 20,
+      pulsingCta: true,
+      ctaText: 'QUERO ACESSO IMEDIATO AO PROTOCOLO',
+      ctaSubtext: 'Acesso imediato • Compra 100% Segura',
+      ctaUrl: 'https://pay.kiwify.com.br/exemplo',
+      showWatermark: false,
+      thumbSniper: { enabled: true, templateId: 'ts_02' },
+    },
+  },
+];
+
+if (fs.existsSync(videosDbFile)) {
+  try {
+    videosDb = JSON.parse(fs.readFileSync(videosDbFile, 'utf-8'));
+  } catch (e) {
+    console.warn('[VeloTurb Server] Inicializando banco de vídeos novo.');
+    videosDb = {};
+  }
+}
+
+// Inicializa vídeos semente se banco estiver vazio
+SEED_VIDEOS.forEach((vid) => {
+  if (!videosDb[vid.id]) {
+    videosDb[vid.id] = vid;
+  }
+});
+
+function saveVideosDb() {
+  try {
+    fs.writeFileSync(videosDbFile, JSON.stringify(videosDb, null, 2));
+  } catch (e) {
+    console.error('[VeloTurb Server] Erro ao salvar banco de vídeos:', e);
+  }
+}
+saveVideosDb();
+
+// Multer storage para upload local
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, uploadsDir);
@@ -32,15 +172,15 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 1024 * 1024 * 800, // 800 MB limit
+    fileSize: 1024 * 1024 * 800, // 800 MB
   },
 });
 
-// Enable CORS for all external origins (Live Server 127.0.0.1, WordPress, Elementor, etc.)
+// CORS completo para qualquer página externa (WordPress, Elementor, HTML estático, Live Server 127.0.0.1:5500)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range, Authorization');
   res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -51,18 +191,176 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve /uploads/player.js with correct MIME type
-app.get('/uploads/player.js', (_req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
+// ROTA 1: Servir player.js standalone com CORS total
+const servePlayerJs = (_req: express.Request, res: express.Response) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  const playerJsPath = path.join(__dirname, 'public', 'uploads', 'player.js');
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  const playerJsPath = path.join(__dirname, 'public', 'player.js');
   if (fs.existsSync(playerJsPath)) {
     return res.sendFile(playerJsPath);
   }
-  return res.send(`/* VeloTurb SmartPlayer Runtime */ (function(){ console.log('[VeloTurb] Player loaded'); })();`);
+  return res.send(`/* VeloTurb SmartPlayer */ console.log('[VeloTurb] Player carregado.');`);
+};
+
+app.get('/player.js', servePlayerJs);
+app.get('/uploads/player.js', servePlayerJs);
+
+// ROTA 2: Obter configuração do Bunny CDN Hostname
+app.get('/api/config', (_req, res) => {
+  return res.json(appConfig);
 });
 
-// Video Streaming Route with HTTP 206 Partial Content (Byte Ranges)
+// ROTA 3: Salvar configuração do Bunny CDN Hostname
+app.post('/api/config', (req, res) => {
+  const { bunnyCdnHostname } = req.body;
+  if (bunnyCdnHostname && typeof bunnyCdnHostname === 'string') {
+    appConfig.bunnyCdnHostname = bunnyCdnHostname.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    saveConfig();
+  }
+  return res.json({ success: true, config: appConfig });
+});
+
+// ROTA 4: GET /api/videos/:id (Usada pelo player.js na página de vendas)
+app.get('/api/videos/:id', (req, res) => {
+  const videoId = req.params.id;
+  const video = videosDb[videoId];
+
+  if (!video) {
+    return res.status(404).json({ error: 'Vídeo não encontrado', id: videoId });
+  }
+
+  const type = video.videoType || (video.videoUrl?.includes('.m3u8') ? 'hls' : 'mp4');
+
+  return res.json({
+    id: video.id,
+    type,
+    src: video.videoUrl,
+    poster: video.thumbnailUrl,
+    pitchDelay: video.settings?.pitchDelaySeconds || video.pitchTime || 0,
+    pitchDelaySeconds: video.settings?.pitchDelaySeconds || video.pitchTime || 0,
+    primaryColor: video.settings?.primaryColor || '#E11D48',
+    title: video.title,
+    name: video.title,
+    smartAutoplay: video.settings?.smartAutoplay ?? true,
+    smartAutoplayText: video.settings?.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio',
+    smartAutoplayTheme: video.settings?.smartAutoplayTheme || 'yellow',
+    onlyProgressBar: video.settings?.onlyProgressBar ?? true,
+    thumbSniper: video.settings?.thumbSniper || { enabled: true, templateId: 'ts_01' },
+    settings: video.settings,
+  });
+});
+
+// ROTA 5: POST /api/videos (Cadastrar ou converter URL de VSL)
+app.post('/api/videos', (req, res) => {
+  try {
+    const {
+      url,
+      rawUrl,
+      title,
+      folderId,
+      pitchDelaySeconds,
+      ctaText,
+      ctaUrl,
+      customCdnHostname,
+      settings: customSettings,
+    } = req.body;
+
+    const targetUrl = (rawUrl || url || '').trim();
+    const effectiveHost = customCdnHostname || appConfig.bunnyCdnHostname;
+
+    const normalized = detectAndNormalizeVideoUrl(targetUrl, effectiveHost);
+
+    if (!normalized.isValid) {
+      return res.status(400).json({ error: normalized.error || 'URL inválida.' });
+    }
+
+    const newId = `vt_vsl_${Math.random().toString(36).substring(2, 9)}`;
+    const pitch = parseInt(pitchDelaySeconds || '15', 10);
+
+    const newVideo = {
+      id: newId,
+      title: (title || 'Minha VSL de Vendas').trim(),
+      folderId: folderId || 'fld_vsl_core',
+      videoUrl: normalized.src,
+      videoType: normalized.type,
+      bunnyVideoId: normalized.videoId,
+      bunnyLibraryId: normalized.libraryId,
+      bunnyCdnHostname: normalized.cdnHostname || effectiveHost,
+      thumbnailUrl: normalized.poster,
+      duration: 540,
+      plays: 0,
+      views: 0,
+      playRate: 100,
+      pitchTime: pitch,
+      retentionAtPitch: 65.0,
+      createdAt: new Date().toISOString().split('T')[0],
+      settings: {
+        primaryColor: customSettings?.primaryColor || '#E11D48',
+        smartAutoplay: customSettings?.smartAutoplay ?? true,
+        smartAutoplayText: customSettings?.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio',
+        smartAutoplayTheme: customSettings?.smartAutoplayTheme || 'yellow',
+        fakeProgressBar: customSettings?.fakeProgressBar ?? true,
+        fakeProgressSpeed: customSettings?.fakeProgressSpeed || 'fast',
+        onlyProgressBar: customSettings?.onlyProgressBar ?? true,
+        hideControls: customSettings?.hideControls ?? false,
+        allowPause: customSettings?.allowPause ?? true,
+        resumePlayback: customSettings?.resumePlayback ?? true,
+        speedControl: customSettings?.speedControl ?? true,
+        antiDownload: customSettings?.antiDownload ?? true,
+        domainLock: customSettings?.domainLock || '*',
+        pitchDelaySeconds: pitch,
+        pulsingCta: customSettings?.pulsingCta ?? true,
+        ctaText: ctaText || customSettings?.ctaText || 'SIM! QUERO GARANTIR MINHA VAGA COM 50% OFF',
+        ctaSubtext: customSettings?.ctaSubtext || 'Acesso imediato • Compra 100% Segura • Garantia de 7 Dias',
+        ctaUrl: ctaUrl || customSettings?.ctaUrl || 'https://pay.kiwify.com.br/checkout',
+        showWatermark: false,
+        thumbSniper: customSettings?.thumbSniper || { enabled: true, templateId: 'ts_01' },
+      },
+    };
+
+    videosDb[newId] = newVideo;
+    saveVideosDb();
+
+    console.log(`[VeloTurb Server] Vídeo ${newId} cadastrado com sucesso! Tipo: ${newVideo.videoType}, URL: ${newVideo.videoUrl}`);
+
+    return res.status(201).json({
+      success: true,
+      video: newVideo,
+      normalized,
+    });
+  } catch (error: any) {
+    console.error('[VeloTurb Server] Erro ao cadastrar vídeo:', error);
+    return res.status(500).json({ error: 'Erro interno ao processar vídeo.' });
+  }
+});
+
+// ROTA 6: PUT /api/videos/:id (Atualizar configurações do vídeo)
+app.put('/api/videos/:id', (req, res) => {
+  const videoId = req.params.id;
+  const existing = videosDb[videoId];
+
+  if (!existing) {
+    return res.status(404).json({ error: 'Vídeo não encontrado para atualização.' });
+  }
+
+  const updated = {
+    ...existing,
+    ...req.body,
+    id: videoId,
+    settings: {
+      ...existing.settings,
+      ...(req.body.settings || {}),
+    },
+  };
+
+  videosDb[videoId] = updated;
+  saveVideosDb();
+
+  return res.json({ success: true, video: updated });
+});
+
+// ROTA 7: Streaming com suporte a HTTP 206 Partial Content (Byte Ranges) para vídeos locais
 app.get('/uploads/videos/:filename', (req, res) => {
   const filePath = path.join(uploadsDir, req.params.filename);
   if (!fs.existsSync(filePath)) {
@@ -80,7 +378,7 @@ app.get('/uploads/videos/:filename', (req, res) => {
   const contentType = ext === '.webm' ? 'video/webm' : 'video/mp4';
 
   if (range) {
-    const parts = range.replace(/bytes=/, "").split("-");
+    const parts = range.replace(/bytes=/, '').split('-');
     const start = parseInt(parts[0], 10);
     const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
@@ -89,7 +387,7 @@ app.get('/uploads/videos/:filename', (req, res) => {
       return;
     }
 
-    const chunksize = (end - start) + 1;
+    const chunksize = end - start + 1;
     const file = fs.createReadStream(filePath, { start, end });
     const head = {
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -109,10 +407,10 @@ app.get('/uploads/videos/:filename', (req, res) => {
   }
 });
 
-// Serve static uploaded videos with HTTP 206 Partial Content support
+// Servir arquivos estáticos de uploads
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
-// Endpoint for uploading videos
+// ROTA 8: Upload de MP4 local
 app.post('/api/upload', upload.single('video'), (req, res) => {
   try {
     if (!req.file) {
@@ -137,34 +435,18 @@ app.post('/api/upload', upload.single('video'), (req, res) => {
   }
 });
 
-// Endpoint to list local hosted videos
-app.get('/api/videos', (_req, res) => {
-  try {
-    const files = fs.readdirSync(uploadsDir);
-    const videoFiles = files
-      .filter((file) => /\.(mp4|webm|mov|m4v)$/i.test(file))
-      .map((file) => {
-        const stats = fs.statSync(path.join(uploadsDir, file));
-        return {
-          filename: file,
-          url: `/uploads/videos/${file}`,
-          size: stats.size,
-          createdAt: stats.birthtime,
-        };
-      });
-    return res.json({ videos: videoFiles });
-  } catch (err) {
-    return res.json({ videos: [] });
-  }
-});
-
-// Standalone iframe embed player page (Apenas o vídeo)
+// ROTA 9: Standalone iframe player com suporte a HLS
 app.get('/embed/:id', (req, res) => {
   const videoId = req.params.id;
-  // Use passed video URL or fallback to reliable test stream
-  const sampleVideoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-  const videoUrl = req.query.url ? String(req.query.url) : sampleVideoUrl;
-  
+  const videoRecord = videosDb[videoId];
+
+  const defaultSample = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  const videoUrl = req.query.url ? String(req.query.url) : (videoRecord?.videoUrl || defaultSample);
+  const unmuteText = req.query.text ? String(req.query.text) : (videoRecord?.settings?.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio');
+  const theme = req.query.theme ? String(req.query.theme) : (videoRecord?.settings?.smartAutoplayTheme || 'yellow');
+  const primaryColor = videoRecord?.settings?.primaryColor || '#E11D48';
+  const pitchDelay = videoRecord?.settings?.pitchDelaySeconds || 15;
+
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -174,63 +456,17 @@ app.get('/embed/:id', (req, res) => {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-    .player-wrap { position: relative; width: 100%; height: 100%; }
-    video { width: 100%; height: 100%; object-fit: contain; }
-    .unmute-banner {
-      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-      background: #FACC15; color: #000; font-family: system-ui, sans-serif;
-      font-weight: 700; font-size: 13px; padding: 10px 22px; border-radius: 9999px;
-      display: flex; align-items: center; gap: 8px; cursor: pointer;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.5); z-index: 50; white-space: nowrap;
-      animation: pulseBanner 2s infinite;
-    }
-    @keyframes pulseBanner {
-      0%, 100% { transform: translateX(-50%) scale(1); }
-      50% { transform: translateX(-50%) scale(1.04); }
-    }
-    .progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.2); z-index: 30; }
-    .progress-fill { height: 100%; width: 0%; background: #E11D48; transition: width 0.15s linear; }
   </style>
 </head>
 <body>
-  <div class="player-wrap">
-    <div id="unmute" class="unmute-banner">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
-      <span>Seu vídeo já começou! Clique para ouvir áudio 🔊</span>
-    </div>
-    <video id="v" src="${videoUrl}" autoplay muted playsinline webkit-playsinline oncontextmenu="return false;"></video>
-    <div class="progress-bar"><div id="fill" class="progress-fill"></div></div>
-  </div>
-  <script>
-    (function() {
-      var v = document.getElementById('v');
-      var btn = document.getElementById('unmute');
-      var fill = document.getElementById('fill');
-      function unmuteAndRestart() {
-        v.currentTime = 0;
-        v.muted = false;
-        v.volume = 1;
-        v.play();
-        if (btn) btn.style.display = 'none';
-      }
-      if (btn) btn.onclick = function(e) { e.stopPropagation(); unmuteAndRestart(); };
-      v.onclick = function() { if (v.muted || (btn && btn.style.display !== 'none')) unmuteAndRestart(); };
-      v.addEventListener('timeupdate', function() {
-        if (fill && v.duration) {
-          var pct = (v.currentTime / v.duration) * 100;
-          fill.style.width = Math.min(100, Math.pow(pct / 100, 0.55) * 100) + '%';
-        }
-      });
-      v.play().catch(function() { v.muted = true; v.play(); });
-    })();
-  </script>
+  <div id="veloturb-${videoId}" data-video-id="${videoId}" data-src="${videoUrl}" data-pitch-delay="${pitchDelay}" data-primary-color="${primaryColor}" style="width: 100%; height: 100%;"></div>
+  <script src="/player.js"></script>
 </body>
 </html>`);
 });
 
-// Development vs Production setup
+// Middleware Vite em desenvolvimento ou build estático em produção
 if (process.env.NODE_ENV !== 'production') {
-  // In development, mount Vite dev server as middleware
   const { createServer } = await import('vite');
   const vite = await createServer({
     server: { middlewareMode: true },
@@ -238,7 +474,6 @@ if (process.env.NODE_ENV !== 'production') {
   });
   app.use(vite.middlewares);
 } else {
-  // In production, serve static built files
   app.use(express.static(path.join(__dirname, 'dist')));
   app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
@@ -246,5 +481,5 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.listen(PORT, () => {
-  console.log(`VeloTurb Server rodando na porta ${PORT}`);
+  console.log(`[VeloTurb Server] Rodando na porta ${PORT} com suporte completo a Bunny Stream HLS (.m3u8)`);
 });

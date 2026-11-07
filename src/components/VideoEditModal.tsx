@@ -258,8 +258,31 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         type="text"
                         value={formData.settings.smartAutoplayText}
                         onChange={(e) => updateSetting('smartAutoplayText', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-rose-500"
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-rose-500 font-bold"
                       />
+
+                      {/* Presets */}
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {[
+                          'Seu vídeo já começou! Clique para ouvir áudio',
+                          'ATENÇÃO: Clique para ouvir com som 🔊',
+                          'O áudio está mutado. Clique para ativar o som',
+                          'Assista com som antes que saia do ar! 🔊',
+                        ].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => updateSetting('smartAutoplayText', preset)}
+                            className={`text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                              formData.settings.smartAutoplayText === preset
+                                ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
 
                       <div className="flex items-center gap-2 pt-1">
                         <span className="text-[11px] text-slate-600">Cor da Faixa:</span>

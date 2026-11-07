@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Film, Link as LinkIcon, Check, X, Sparkles, Server, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, Film, Link as LinkIcon, Check, X, Sparkles, AlertCircle, Loader2, PlayCircle, Globe, ShieldCheck } from 'lucide-react';
 import { VideoItem, Folder } from '../types';
+import { detectAndNormalizeVideoUrl, DEFAULT_BUNNY_CDN_HOSTNAME, NormalizedVideoUrlResult } from '../utils/urlDetector';
 
 interface UploadVideoModalProps {
   folders: Folder[];
@@ -15,9 +16,10 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
   onClose,
   onUploadSuccess,
 }) => {
-  const [activeTab, setActiveTab] = useState<'file' | 'url' | 'templates'>('file');
+  const [activeTab, setActiveTab] = useState<'bunny' | 'file' | 'templates'>('bunny');
   const [title, setTitle] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [customCdnHost, setCustomCdnHost] = useState(DEFAULT_BUNNY_CDN_HOSTNAME);
   const [folderId, setFolderId] = useState(folders[0]?.id || 'all');
   const [pitchDelaySec, setPitchDelaySec] = useState(15);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -26,6 +28,11 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Real-time URL normalization & Bunny Stream detection
+  const normalized: NormalizedVideoUrlResult | null = videoUrlInput.trim()
+    ? detectAndNormalizeVideoUrl(videoUrlInput, customCdnHost)
+    : null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,23 +45,62 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
     }
   };
 
-  const handleTemplateSelect = (tmpl: { title: string; url: string; pitch: number; folder: string }) => {
+  const handleTemplateSelect = (tmpl: {
+    title: string;
+    url: string;
+    pitch: number;
+    folder: string;
+    type?: 'hls' | 'mp4';
+    thumb?: string;
+    libraryId?: string;
+    videoId?: string;
+  }) => {
     setTitle(tmpl.title);
-    setVideoUrl(tmpl.url);
+    setVideoUrlInput(tmpl.url);
     setPitchDelaySec(tmpl.pitch);
     setFolderId(tmpl.folder);
+    setUploadError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError(null);
 
-    let finalVideoUrl = videoUrl;
+    let finalVideoUrl = videoUrlInput.trim();
+    let finalThumbnail = 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80';
+    let videoType: 'hls' | 'mp4' = 'mp4';
+    let bunnyVideoId: string | undefined;
+    let bunnyLibraryId: string | undefined;
 
-    // If uploading a real file, send to backend /api/upload
-    if (activeTab === 'file' && selectedFile) {
+    // Tab 1: Bunny Stream / CDN URL
+    if (activeTab === 'bunny') {
+      if (!finalVideoUrl) {
+        setUploadError('Por favor, insira o link do Bunny Stream ou CDN.');
+        return;
+      }
+
+      const res = detectAndNormalizeVideoUrl(finalVideoUrl, customCdnHost);
+      if (!res.isValid) {
+        setUploadError(res.error || 'Use uma URL pública https.');
+        return;
+      }
+
+      finalVideoUrl = res.src;
+      videoType = res.type;
+      if (res.poster) finalThumbnail = res.poster;
+      if (res.videoId) bunnyVideoId = res.videoId;
+      if (res.libraryId) bunnyLibraryId = res.libraryId;
+    }
+
+    // Tab 2: Upload MP4 from Computer
+    if (activeTab === 'file') {
+      if (!selectedFile) {
+        setUploadError('Por favor, selecione um arquivo de vídeo do seu computador.');
+        return;
+      }
+
       setIsUploading(true);
-      setUploadProgress(15);
+      setUploadProgress(20);
 
       try {
         const formData = new FormData();
@@ -77,36 +123,47 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
         }
 
         const data = await response.json();
-        // Always store full absolute URL so embed code works anywhere (Live Server, WordPress, Elementor, etc.)
         const currentOrigin = window.location.origin;
         finalVideoUrl = data.absoluteUrl || (data.url.startsWith('http') ? data.url : `${currentOrigin}${data.url}`);
+        videoType = 'mp4';
       } catch (err: any) {
         console.error(err);
         setIsUploading(false);
-        setUploadError('Não foi possível salvar o arquivo no servidor. Links temporários "blob:" não são permitidos por navegadores em páginas externas (Live Server, WordPress). Por favor, use um link direto hospedado (Bunny Stream, Cloudflare R2, AWS S3 ou link direto .mp4).');
+        setUploadError('Use uma URL pública https. O navegador bloqueia arquivos locais em páginas de vendas externas.');
         return;
       } finally {
         setIsUploading(false);
       }
     }
 
-    if (!finalVideoUrl.trim() && !selectedFile) {
-      setUploadError('Por favor, selecione um arquivo de vídeo ou insira uma URL.');
-      return;
+    // Tab 3: Template selection
+    if (activeTab === 'templates') {
+      const res = detectAndNormalizeVideoUrl(finalVideoUrl, customCdnHost);
+      if (res.isValid) {
+        finalVideoUrl = res.src;
+        videoType = res.type;
+        if (res.poster) finalThumbnail = res.poster;
+        if (res.videoId) bunnyVideoId = res.videoId;
+        if (res.libraryId) bunnyLibraryId = res.libraryId;
+      }
     }
 
     const newVideo: VideoItem = {
       id: `vt_vsl_${Math.random().toString(36).substring(2, 9)}`,
-      title: title.trim() || 'Minha VSL de Vendas',
+      title: title.trim() || 'Minha VSL de Alta Conversão',
       folderId: folderId,
       videoUrl: finalVideoUrl,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
-      duration: 480, // 8 min default
+      thumbnailUrl: finalThumbnail,
+      videoType: videoType,
+      bunnyVideoId: bunnyVideoId,
+      bunnyLibraryId: bunnyLibraryId,
+      bunnyCdnHostname: customCdnHost,
+      duration: 540,
       plays: 0,
       views: 0,
       playRate: 100,
       pitchTime: pitchDelaySec,
-      retentionAtPitch: 68.0,
+      retentionAtPitch: 70.0,
       createdAt: new Date().toISOString().split('T')[0],
       settings: {
         primaryColor: '#E11D48',
@@ -115,7 +172,7 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
         smartAutoplayTheme: 'yellow',
         fakeProgressBar: true,
         fakeProgressSpeed: 'fast',
-        onlyProgressBar: true, // Modo VSL Profissional
+        onlyProgressBar: true,
         hideControls: false,
         allowPause: true,
         resumePlayback: true,
@@ -128,8 +185,24 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
         ctaSubtext: 'Acesso imediato • Compra 100% Segura • Garantia de 7 Dias',
         ctaUrl: 'https://seusite.com.br/checkout',
         showWatermark: false,
+        thumbSniper: {
+          enabled: true,
+          type: 'template',
+          templateId: 'ts_01',
+        },
       },
     };
+
+    // Save to backend database for standalone player embeds
+    try {
+      await fetch('/api/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newVideo),
+      });
+    } catch (e) {
+      console.warn('Backend video sync warn:', e);
+    }
 
     onUploadSuccess(newVideo);
     onClose();
@@ -137,22 +210,28 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
 
   const templates = [
     {
+      title: 'VSL Teclado Nord Stage - Pack Audio Evolution (Bunny Stream Library 802485)',
+      url: 'https://player.mediadelivery.net/play/802485/a818fa3d-82ba-4162-81d0-9a8ad66f0d1f',
+      pitch: 15,
+      folder: 'fld_vsl_core',
+      type: 'hls' as const,
+      thumb: 'https://vz-802485-cdn.b-cdn.net/a818fa3d-82ba-4162-81d0-9a8ad66f0d1f/thumbnail.jpg',
+      libraryId: '802485',
+      videoId: 'a818fa3d-82ba-4162-81d0-9a8ad66f0d1f',
+    },
+    {
       title: 'VSL Oferta Direta - Nicho Saúde e Bem-Estar',
       url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
       pitch: 15,
       folder: 'fld_vsl_core',
+      type: 'mp4' as const,
     },
     {
       title: 'VSL Perpétua - Infoproduto Finanças & Renda',
       url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
       pitch: 20,
       folder: 'fld_webinar',
-    },
-    {
-      title: 'Vídeo Rápido de Downsell - R$ 27',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      pitch: 10,
-      folder: 'fld_upsell',
+      type: 'mp4' as const,
     },
   ];
 
@@ -169,13 +248,13 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
             <div>
               <h3 className="text-base font-bold text-slate-900">Hospedar Nova VSL</h3>
               <p className="text-xs text-slate-500">
-                Envio direto do computador ou conexão com Bunny.net / Cloudflare R2 / AWS S3.
+                Bunny Stream (.m3u8 adaptativo), Cloudflare R2 ou envio nativo MP4.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -188,29 +267,29 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg text-xs font-semibold">
             <button
               type="button"
-              onClick={() => setActiveTab('file')}
-              className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-colors ${
-                activeTab === 'file' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setActiveTab('bunny')}
+              className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                activeTab === 'bunny' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Film className="w-3.5 h-3.5 text-rose-600" />
-              1. Enviar MP4 do Computador (Nativo)
+              <LinkIcon className="w-3.5 h-3.5 text-blue-600" />
+              1. Bunny Stream / CDN (HLS & MP4)
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('url')}
-              className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-colors ${
-                activeTab === 'url' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setActiveTab('file')}
+              className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                activeTab === 'file' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <LinkIcon className="w-3.5 h-3.5" />
-              2. Bunny.net / Cloudflare / CDN
+              <Film className="w-3.5 h-3.5 text-rose-600" />
+              2. Enviar MP4 Local
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('templates')}
-              className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-colors ${
-                activeTab === 'templates' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                activeTab === 'templates' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -218,7 +297,92 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
             </button>
           </div>
 
-          {/* TAB 1: Real Local MP4 Upload */}
+          {/* TAB 1: Bunny Stream / CDN URL with Real-time Auto Normalization */}
+          {activeTab === 'bunny' && (
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Link do Bunny Stream ou CDN Direto
+                  </label>
+                  <span className="text-[10px] text-blue-600 font-semibold">
+                    Aceita link de player, playlist.m3u8 ou .mp4
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={videoUrlInput}
+                  onChange={(e) => {
+                    setVideoUrlInput(e.target.value);
+                    setUploadError(null);
+                  }}
+                  placeholder="https://player.mediadelivery.net/play/802485/... ou playlist.m3u8"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-mono"
+                />
+              </div>
+
+              {/* Automatic Bunny Stream Detection Box */}
+              {normalized && normalized.isValid && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5 text-xs text-emerald-900">
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-1.5 text-emerald-700">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      {normalized.type === 'hls' ? 'Bunny Stream HLS Detectado!' : 'Vídeo MP4 Válido'}
+                    </span>
+                    <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-emerald-300">
+                      {normalized.type.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {normalized.videoId && (
+                    <div className="text-[11px] text-emerald-800 space-y-0.5 pt-1">
+                      <p><strong>Video ID:</strong> <code className="bg-emerald-100 px-1 rounded">{normalized.videoId}</code></p>
+                      {normalized.libraryId && (
+                        <p><strong>Library ID:</strong> <code className="bg-emerald-100 px-1 rounded">{normalized.libraryId}</code></p>
+                      )}
+                      <p className="truncate"><strong>URL Convertida (.m3u8):</strong> <span className="font-mono text-[10px]">{normalized.src}</span></p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Rejection of blob / localhost with Portuguese requirement message */}
+              {normalized && !normalized.isValid && normalized.error && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-800">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Use uma URL pública https</strong>
+                    <p className="text-[11px] mt-0.5">{normalized.error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* CDN Hostname Configuration accordion */}
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <span className="font-semibold flex items-center gap-1">
+                    <Globe className="w-3.5 h-3.5 text-slate-500" />
+                    Hostname CDN Bunny Stream:
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    BUNNY_CDN_HOSTNAME
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={customCdnHost}
+                  onChange={(e) => setCustomCdnHost(e.target.value)}
+                  placeholder="ex: vz-802485-cdn.b-cdn.net"
+                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white font-mono"
+                />
+                <p className="text-[10px] text-slate-400">
+                  O link do player Bunny é convertido automaticamente para <code>https://{customCdnHost || 'SEU-CDN'}/&lt;VIDEO_ID&gt;/playlist.m3u8</code>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: Real Local MP4 Upload */}
           {activeTab === 'file' && (
             <div className="space-y-3">
               <label className="border-2 border-dashed border-rose-300 hover:border-rose-500 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-rose-50/20 group">
@@ -235,7 +399,7 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
                   )}
                 </span>
                 <span className="text-[11px] text-slate-500 mt-1">
-                  Hospedagem direta no servidor VeloTurb com streaming rápido
+                  Hospedagem com streaming HTTP 206 Range e suporte a CORS
                 </span>
                 <input
                   type="file"
@@ -265,46 +429,34 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: Direct CDN URL (Bunny, Cloudflare, S3) */}
-          {activeTab === 'url' && (
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-700">
-                Link direto do vídeo (Bunny Stream / Cloudflare R2 / AWS S3)
-              </label>
-              <input
-                type="url"
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://video.bunnycdn.com/play/... ou https://pub-xxx.r2.dev/vsl.mp4"
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-mono"
-              />
-              <p className="text-[11px] text-slate-500">
-                💡 <strong>Dica:</strong> Cole qualquer link direto que termine em <code>.mp4</code> ou link do Bunny Stream. O VeloTurb cuidará de todo o player e do Pitch Delay!
-              </p>
-            </div>
-          )}
-
           {/* TAB 3: Ready templates */}
           {activeTab === 'templates' && (
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-slate-700">
-                Vídeos de teste para validar sua página de vendas agora:
+                Selecione um vídeo pronto para validar a PV agora:
               </label>
               {templates.map((tmpl, idx) => (
                 <div
                   key={idx}
                   onClick={() => handleTemplateSelect(tmpl)}
                   className={`p-3 border rounded-xl cursor-pointer transition-all flex items-center justify-between ${
-                    videoUrl === tmpl.url
+                    videoUrlInput === tmpl.url
                       ? 'border-rose-600 bg-rose-50/40 shadow-sm'
                       : 'border-slate-200 hover:border-slate-300 bg-white'
                   }`}
                 >
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900">{tmpl.title}</h5>
+                    <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      {tmpl.type === 'hls' && (
+                        <span className="bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0.2 rounded font-mono font-bold">
+                          HLS 9min
+                        </span>
+                      )}
+                      {tmpl.title}
+                    </h5>
                     <p className="text-[11px] text-slate-500">Pitch test aos {tmpl.pitch}s · Otimizado para PVs</p>
                   </div>
-                  {videoUrl === tmpl.url && (
+                  {videoUrlInput === tmpl.url && (
                     <Check className="w-4 h-4 text-rose-600" />
                   )}
                 </div>
@@ -322,7 +474,7 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: VSL Principal - Nicho Black 2026"
+              placeholder="Ex: VSL Teclado Nord Stage - Nicho Black"
               className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium"
             />
           </div>
@@ -370,21 +522,21 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
           {/* Footer Actions */}
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
             <span className="text-[11px] text-slate-500">
-              {activeTab === 'file' ? 'Arquivo hospedado localmente' : 'URL externa segura'}
+              {activeTab === 'bunny' ? 'Streaming HLS adaptativo' : activeTab === 'file' ? 'Arquivo MP4' : 'Modelo pronto'}
             </span>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                disabled={isUploading || (!selectedFile && !videoUrl.trim())}
-                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                disabled={isUploading || (activeTab === 'file' ? !selectedFile : !videoUrlInput.trim())}
+                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer"
               >
                 {isUploading ? (
                   <>

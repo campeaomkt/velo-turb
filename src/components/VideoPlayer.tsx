@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, FastForward, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, ShieldCheck } from 'lucide-react';
+import Hls from 'hls.js';
 import { VideoItem } from '../types';
 import { ThumbSniperOverlay } from './ThumbSniperOverlay';
 
@@ -18,36 +19,97 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(video.settings.smartAutoplay);
   const [showAutoplayBanner, setShowAutoplayBanner] = useState(video.settings.smartAutoplay);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(video.duration || 100);
-  const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState(1);
   const [showControls, setShowControls] = useState(false);
   const [pitchTriggered, setPitchTriggered] = useState(false);
 
   const primaryColor = video.settings.primaryColor || '#E11D48';
 
-  // Autoplay initiation
+  // Determine if stream is HLS
+  const isHlsUrl =
+    video.videoType === 'hls' ||
+    (video.videoUrl && (video.videoUrl.includes('.m3u8') || video.videoUrl.includes('mediadelivery.net')));
+
+  // Initialize playback and HLS / MP4 loader
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
 
-    if (video.settings.smartAutoplay) {
-      vid.muted = true;
-      setIsMuted(true);
-      setShowAutoplayBanner(true);
-      const playPromise = vid.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => setIsPlaying(true))
-          .catch(() => {
-            // Autoplay prevented by browser
-            setIsPlaying(false);
-          });
+    // Cleanup previous HLS instance if any
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    const startAutoplayIfNeeded = () => {
+      if (video.settings.smartAutoplay) {
+        vid.muted = true;
+        setIsMuted(true);
+        setShowAutoplayBanner(true);
+        vid.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       }
+    };
+
+    if (isHlsUrl && video.videoUrl) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          startLevel: -1,
+          capLevelToPlayerSize: true,
+          maxBufferLength: 30,
+          enableWorker: true,
+        });
+        hlsRef.current = hls;
+
+        hls.loadSource(video.videoUrl);
+        hls.attachMedia(vid);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          startAutoplayIfNeeded();
+        });
+
+        hls.on(Hls.Events.LEVEL_LOADED, (_event, data) => {
+          if (data?.details?.totalduration && !isNaN(data.details.totalduration)) {
+            setDuration(data.details.totalduration);
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          console.warn('[VeloTurb HLS Error]', data);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log('[VeloTurb] Tentando recuperar de erro de rede HLS...');
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log('[VeloTurb] Tentando recuperar de erro de mídia HLS...');
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('[VeloTurb] Erro fatal irrecuperável HLS:', data);
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native Safari / iOS support
+        vid.src = video.videoUrl;
+        vid.addEventListener('loadedmetadata', () => {
+          startAutoplayIfNeeded();
+        }, { once: true });
+      }
+    } else if (video.videoUrl) {
+      // Standard MP4
+      vid.src = video.videoUrl;
+      startAutoplayIfNeeded();
     }
 
     // Resume playback if enabled
@@ -57,7 +119,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         vid.currentTime = parseFloat(saved);
       }
     }
-  }, [video.id, video.settings.smartAutoplay, video.settings.resumePlayback]);
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [video.id, video.videoUrl, isHlsUrl, video.settings.smartAutoplay, video.settings.resumePlayback]);
 
   // Handle time update
   const handleTimeUpdate = () => {
@@ -73,7 +142,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       try {
         localStorage.setItem(`veloturb_time_${video.id}`, vid.currentTime.toString());
       } catch (e) {
-        // ignore
+        // ignore storage errors
       }
     }
 
@@ -92,7 +161,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const vid = videoRef.current;
     if (!vid) return;
 
-    // Smart Autoplay hook: Restart from beginning (00:00) with audio!
+    // Smart Autoplay hook: Restart from beginning (00:00) with audio enabled!
     vid.currentTime = 0;
     vid.muted = false;
     setIsMuted(false);
@@ -187,10 +256,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <button
             type="button"
             onClick={handleUnmuteClick}
-            className={`px-5 py-2.5 rounded-full font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-xl transition-transform active:scale-95 animate-bounce cursor-pointer ${bannerThemeClasses}`}
+            className={`px-5 py-2.5 rounded-full font-extrabold text-xs sm:text-sm flex items-center gap-2.5 shadow-2xl transition-transform active:scale-95 animate-bounce cursor-pointer tracking-tight ${bannerThemeClasses}`}
           >
-            <VolumeX className="w-5 h-5 shrink-0" />
-            <span className="whitespace-nowrap">{video.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio 🔊'}</span>
+            <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.5]" />
+            <span className="whitespace-nowrap font-extrabold">
+              {video.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}
+            </span>
+            <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.5]" />
           </button>
         </div>
       )}
@@ -198,10 +270,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={video.videoUrl}
         poster={video.thumbnailUrl}
         playsInline
         onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={(e) => {
+          const d = (e.target as HTMLVideoElement).duration;
+          if (d && !isNaN(d)) setDuration(d);
+        }}
+        onDurationChange={(e) => {
+          const d = (e.target as HTMLVideoElement).duration;
+          if (d && !isNaN(d)) setDuration(d);
+        }}
         onEnded={() => setIsPlaying(false)}
         onClick={handleVideoClick}
         className="w-full h-full object-contain cursor-pointer bg-black"
@@ -250,7 +329,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <button
                   type="button"
                   onClick={togglePlay}
-                  className="hover:text-rose-400 transition-colors p-1"
+                  className="hover:text-rose-400 transition-colors p-1 cursor-pointer"
                 >
                   {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
                 </button>
@@ -259,7 +338,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <button
                 type="button"
                 onClick={toggleMute}
-                className="hover:text-rose-400 transition-colors p-1"
+                className="hover:text-rose-400 transition-colors p-1 cursor-pointer"
               >
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
@@ -274,7 +353,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <button
                   type="button"
                   onClick={handleSpeedChange}
-                  className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 font-mono text-[11px] transition-colors"
+                  className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 font-mono text-[11px] transition-colors cursor-pointer"
                 >
                   {speed}x
                 </button>
@@ -283,7 +362,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="hover:text-rose-400 transition-colors p-1"
+                className="hover:text-rose-400 transition-colors p-1 cursor-pointer"
               >
                 <Maximize className="w-4 h-4" />
               </button>

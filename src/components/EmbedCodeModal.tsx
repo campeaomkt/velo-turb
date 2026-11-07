@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Copy, Check, X, Info, AlertTriangle, Server, CheckCircle2 } from 'lucide-react';
+import { Copy, Check, X, Info, AlertTriangle, Server, CheckCircle2, Volume2, VolumeX, Sparkles, Code, Play } from 'lucide-react';
 import { VideoItem } from '../types';
+import { detectAndNormalizeVideoUrl, DEFAULT_BUNNY_CDN_HOSTNAME } from '../utils/urlDetector';
 
 interface EmbedCodeModalProps {
   video: VideoItem;
@@ -13,20 +14,21 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   video,
   isOpen,
   onClose,
+  onOpenSimulator,
 }) => {
-  const [embedType, setEmbedType] = useState<'js' | 'iframe'>('js');
+  const [embedMode, setEmbedMode] = useState<'short' | 'inline' | 'iframe'>('short');
   const [isResponsive, setIsResponsive] = useState(false);
   const [optimizeSpeed, setOptimizeSpeed] = useState(true);
   const [copiedMain, setCopiedMain] = useState(false);
   const [copiedHead, setCopiedHead] = useState(false);
 
+  // Dynamic origin calculation with fallback to current window location
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.veloturb.com';
   const primaryColor = video.settings.primaryColor || '#E11D48';
 
-  const isBlobOriginal = video.videoUrl?.startsWith('blob:');
+  // Normalize source URL to avoid any blob: or localhost issues
   const [videoSourceUrl, setVideoSourceUrl] = useState<string>(() => {
     if (video.videoUrl?.startsWith('blob:')) {
-      // Default to reliable high-speed test stream so external PV never goes black
       return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
     }
     if (video.videoUrl?.startsWith('/')) {
@@ -35,21 +37,53 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     return video.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
   });
 
+  // State to edit Smart Autoplay Banner Text & Theme (matching image_80c31181.png)
+  const [autoplayText, setAutoplayText] = useState<string>(
+    video.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'
+  );
+  const [autoplayTheme, setAutoplayTheme] = useState<'yellow' | 'black' | 'red' | 'purple'>(
+    video.settings.smartAutoplayTheme || 'yellow'
+  );
+
+  const bannerColors = {
+    yellow: { bg: '#FACC15', text: '#000000', border: '#EAB308', name: 'Amarelo Atenção' },
+    black: { bg: '#09090B', text: '#FFFFFF', border: '#27272A', name: 'Preto Elegante' },
+    red: { bg: '#E11D48', text: '#FFFFFF', border: '#BE123C', name: 'Vermelho Urgência' },
+    purple: { bg: '#8B5CF6', text: '#FFFFFF', border: '#7C3AED', name: 'Roxo VIP' },
+  }[autoplayTheme];
+
   if (!isOpen) return null;
 
-  // 1. Clean video-only JavaScript Embed
-  const jsEmbedCode = `<veloturb-smartplayer id="vid-${video.id}" style="display: block; margin: 0 auto; width: 100%; max-width: 100%;">
+  const isBlob = video.videoUrl?.startsWith('blob:');
+  const isHls = videoSourceUrl.includes('.m3u8') || video.videoType === 'hls';
+
+  // Format 1: Ultra-clean short embed code requested by user
+  const shortEmbedCode = `<div id="veloturb-${video.id}" data-video-id="${video.id}" style="aspect-ratio:16/9;width:100%"></div>\n<script src="${origin}/player.js" async></script>`;
+
+  // Format 2: Self-contained Inline JavaScript with Hls.js loader, Smart Autoplay & ThumbSniper
+  const inlineJsEmbedCode = `<veloturb-smartplayer id="vid-${video.id}" style="display: block; margin: 0 auto; width: 100%; max-width: 100%;">
   <div class="veloturb-player-placeholder" style="position: relative; width: 100%; padding-bottom: 56.25%; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
     
-    <!-- Smart Autoplay Unmute Hook -->
-    <div id="veloturb-unmute-${video.id}" style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 40; background: #FACC15; color: #000; padding: 10px 22px; border-radius: 9999px; font-weight: 700; font-size: 14px; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.35); text-align: center; white-space: nowrap;">
-      <span>Seu vídeo já começou! Clique para ouvir áudio 🔊</span>
+    <!-- Smart Autoplay Unmute Hook (Com Ícones Duplos e Texto Editável) -->
+    <div id="veloturb-unmute-${video.id}" style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 40; background: ${bannerColors.bg}; color: ${bannerColors.text}; padding: 10px 22px; border-radius: 9999px; font-weight: 800; font-size: 14px; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; gap: 9px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; white-space: nowrap; max-width: 92%;">
+      <!-- Ícone Som Mudo (Esquerda) -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      </svg>
+      <span style="font-weight: 800; letter-spacing: -0.2px;">${autoplayText}</span>
+      <!-- Ícone Som Ativo com Ondas (Direita) -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
     </div>
 
     <!-- Video Element -->
     <video
       id="veloturb-vid-${video.id}"
-      src="${videoSourceUrl}"
+      poster="${video.thumbnailUrl || ''}"
       autoplay
       muted
       playsinline
@@ -94,8 +128,37 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   var b = document.getElementById('veloturb-unmute-${video.id}');
   var bar = document.getElementById('veloturb-bar-${video.id}');
   var ts = document.getElementById('veloturb-thumbsniper-${video.id}');
+  var url = '${videoSourceUrl}';
+  var isHls = url.indexOf('.m3u8') !== -1;
 
-  // Ao clicar na isca de áudio ou no vídeo, reinicia DO COMEÇO (00:00) com SOM ATIVADO!
+  function loadHlsScript(cb) {
+    if (window.Hls) { cb(window.Hls); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+    s.onload = function() { cb(window.Hls); };
+    document.head.appendChild(s);
+  }
+
+  function initPlayer() {
+    if (isHls) {
+      if (v.canPlayType('application/vnd.apple.mpegurl')) {
+        v.src = url;
+      } else {
+        loadHlsScript(function(HlsClass) {
+          if (HlsClass && HlsClass.isSupported()) {
+            var hls = new HlsClass({ startLevel: -1, capLevelToPlayerSize: true });
+            hls.loadSource(url);
+            hls.attachMedia(v);
+          }
+        });
+      }
+    } else {
+      v.src = url;
+    }
+  }
+
+  initPlayer();
+
   function unmuteAndRestartFromZero() {
     try {
       v.currentTime = 0;
@@ -117,21 +180,12 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     }
   };
 
-  // ThumbSniper Trigger: Ao pausar, mostra o aviso animado com a mãozinha!
   if (ts) {
     v.addEventListener('pause', function() {
-      if (!v.ended && v.currentTime > 1) {
-        ts.style.display = 'flex';
-      }
+      if (!v.ended && v.currentTime > 1) { ts.style.display = 'flex'; }
     });
-    v.addEventListener('play', function() {
-      ts.style.display = 'none';
-    });
-    ts.onclick = function(e) {
-      e.stopPropagation();
-      v.play();
-      ts.style.display = 'none';
-    };
+    v.addEventListener('play', function() { ts.style.display = 'none'; });
+    ts.onclick = function(e) { e.stopPropagation(); v.play(); ts.style.display = 'none'; };
   }
 
   v.addEventListener('timeupdate', function() {
@@ -145,23 +199,34 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
 })();
 </script>`;
 
-  // 2. Clean iFrame Embed
+  // Format 3: Clean iFrame Embed
   const iframeEmbedCode = `<div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px;">
   <iframe
-    src="${origin}/embed/${video.id}?url=${encodeURIComponent(videoSourceUrl)}"
+    src="${origin}/embed/${video.id}?url=${encodeURIComponent(videoSourceUrl)}&text=${encodeURIComponent(autoplayText)}&theme=${autoplayTheme}"
     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
     allow="autoplay; fullscreen; encrypted-media"
     allowfullscreen
   ></iframe>
 </div>`;
 
-  // 3. Preload speed optimization code
+  // Format 4: Head Preload optimization tag (VTurb standard)
   const headPreloadCode = `<script>!function(i,n){i._plt=i._plt||(n&&n.timeOrigin?n.timeOrigin+n.now():Date.now())}(window,performance);</script>
-<link rel="preload" href="${origin}/uploads/player.js" as="script">
+<link rel="preload" href="${origin}/player.js" as="script">
 <link rel="preconnect" href="${origin}">
 <link rel="dns-prefetch" href="${origin}">`;
 
-  const currentMainCode = embedType === 'js' ? jsEmbedCode : iframeEmbedCode;
+  const getActiveCode = () => {
+    switch (embedMode) {
+      case 'short':
+        return shortEmbedCode;
+      case 'inline':
+        return inlineJsEmbedCode;
+      case 'iframe':
+        return iframeEmbedCode;
+      default:
+        return shortEmbedCode;
+    }
+  };
 
   const copyToClipboard = (text: string, isHead: boolean = false) => {
     navigator.clipboard.writeText(text);
@@ -175,149 +240,222 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-150">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[95vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-slate-800 font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-[2px] animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[95vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-slate-800 font-sans">
         
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900 tracking-tight">Embed</h2>
+        {/* Header matching VTurb modal */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">Embed</h2>
+            <p className="text-xs text-slate-500">Pronto para colar no Elementor, WordPress ou HTML da sua PV</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+            className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
           
-          {/* Subtitle */}
-          <p className="text-xs text-slate-600">
-            Incorpore o vídeo onde quiser!{' '}
-            <span className="text-blue-600 hover:underline cursor-pointer font-medium">
-              Aprenda a incorporar seu vídeo
-            </span>.
-          </p>
+          {/* Subtitle instructions */}
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <p>
+              Incorpore o vídeo onde quiser!{' '}
+              <span className="text-blue-600 hover:underline cursor-pointer font-medium">
+                Aprenda a incorporar seu vídeo
+              </span>.
+            </p>
+            {onOpenSimulator && (
+              <button
+                type="button"
+                onClick={onOpenSimulator}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" /> Testar na PV Simulada
+              </button>
+            )}
+          </div>
 
-          {/* Video URL Source & Validation Banner (Solução definitiva para a tela preta) */}
-          <div className={`p-4 rounded-xl border ${isBlobOriginal ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'} space-y-2.5`}>
+          {/* Video Origin & Source URL box */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {isBlobOriginal ? (
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                ) : (
-                  <Server className="w-4 h-4 text-blue-600 shrink-0" />
-                )}
+                <Server className="w-4 h-4 text-blue-600 shrink-0" />
                 <h4 className="text-xs font-bold text-slate-900">
-                  {isBlobOriginal ? 'Atenção: Link Temporário "blob:" Detectado' : 'Origem & Hospedagem do Vídeo'}
+                  Origem do Vídeo ({isHls ? 'Bunny Stream HLS .m3u8' : 'MP4 Direto'})
                 </h4>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
-                {videoSourceUrl.includes('bunny') ? 'Bunny Stream' : videoSourceUrl.includes('r2.dev') ? 'Cloudflare R2' : 'MP4 Direto'}
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 border border-emerald-300 text-emerald-700 font-bold">
+                {isHls ? '✓ HLS Habilitado' : 'MP4 Direto'}
               </span>
             </div>
 
-            {isBlobOriginal ? (
-              <div className="text-[11px] text-amber-900 leading-relaxed space-y-1">
-                <p>
-                  <strong>Por que o vídeo ficou preto no seu site (127.0.0.1:5500)?</strong>
-                </p>
-                <p>
-                  O navegador <strong>proíbe</strong> páginas externas de abrir links do tipo <code>blob:</code> por segurança (erro <em>"Not allowed to load local resource"</em>). O vídeo precisa de uma URL pública acessível.
-                </p>
-                <p className="text-emerald-800 font-semibold">
-                  ✅ Substituímos automaticamente pelo vídeo de alta velocidade abaixo para você testar na sua PV agora mesmo sem tela preta.
-                </p>
-              </div>
-            ) : (
-              <p className="text-[11px] text-slate-500">
-                Link direto do vídeo que será executado na sua página de vendas:
-              </p>
-            )}
+            <p className="text-[11px] text-slate-500">
+              URL direta pública que será carregada pelo player na sua página de vendas:
+            </p>
 
             <div className="flex items-center gap-2 pt-1">
               <input
                 type="url"
                 value={videoSourceUrl}
                 onChange={(e) => setVideoSourceUrl(e.target.value)}
-                placeholder="https://video.bunnycdn.com/... ou https://pub-xxx.r2.dev/vsl.mp4"
+                placeholder="https://vz-802485-cdn.b-cdn.net/.../playlist.m3u8"
                 className="flex-1 px-3 py-1.5 text-xs font-mono border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
               />
               <button
                 type="button"
-                onClick={() => setVideoSourceUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')}
-                className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 whitespace-nowrap cursor-pointer"
+                onClick={() => setVideoSourceUrl('https://vz-802485-cdn.b-cdn.net/a818fa3d-82ba-4162-81d0-9a8ad66f0d1f/playlist.m3u8')}
+                className="px-3 py-1.5 text-[11px] font-bold rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 whitespace-nowrap cursor-pointer"
               >
-                Vídeo de Teste 100%
+                Bunny Demo 802485
               </button>
             </div>
           </div>
 
-          {/* Toggle: Vídeo Responsivo */}
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              <h4 className="text-xs font-semibold text-slate-800">Vídeo Responsivo</h4>
-              <p className="text-[11px] text-slate-400">Use versões diferentes para dispositivos mobile e desktop</p>
+          {/* Banner Text & Style Editor (Exatamente a faixa amarela mostrada na imagem) */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-amber-500 shrink-0" />
+                <h4 className="text-xs font-bold text-slate-900">
+                  Editar Texto da Faixa de Som (Smart Autoplay)
+                </h4>
+              </div>
+              <span className="text-[10px] text-slate-500 font-semibold bg-white border border-slate-200 px-2 py-0.5 rounded">
+                Reinicia 00:00 com Áudio
+              </span>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+
+            {/* Live Visual Preview of Banner exactly like screenshot */}
+            <div className="py-2.5 px-3 bg-slate-900/10 rounded-lg flex justify-center items-center">
+              <div 
+                style={{ backgroundColor: bannerColors.bg, color: bannerColors.text }}
+                className="px-5 py-2.5 rounded-full font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg border border-black/10 select-none max-w-full text-center"
+              >
+                <VolumeX className="w-4 h-4 shrink-0 stroke-[2.5]" />
+                <span className="font-extrabold tracking-tight truncate">{autoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}</span>
+                <Volume2 className="w-4 h-4 shrink-0 stroke-[2.5]" />
+              </div>
+            </div>
+
+            {/* Editable text input */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Texto exibido na faixa do vídeo:
+              </label>
               <input
-                type="checkbox"
-                checked={isResponsive}
-                onChange={(e) => setIsResponsive(e.target.checked)}
-                className="sr-only peer"
+                type="text"
+                value={autoplayText}
+                onChange={(e) => setAutoplayText(e.target.value)}
+                placeholder="Ex: Seu vídeo já começou! Clique para ouvir áudio"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-900"
               />
-              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {[
+                'Seu vídeo já começou! Clique para ouvir áudio',
+                'ATENÇÃO: Clique para ouvir com som 🔊',
+                'O áudio está mutado. Clique aqui para ativar o som',
+                'Assista com som antes que saia do ar! 🔊',
+              ].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setAutoplayText(preset)}
+                  className={`px-2 py-1 text-[10px] rounded-lg border transition-colors cursor-pointer ${
+                    autoplayText === preset
+                      ? 'bg-blue-50 text-blue-700 border-blue-400 font-bold'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+
+            {/* Theme Colors */}
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+              <span className="text-[11px] font-semibold text-slate-600">Cor da faixa:</span>
+              {(['yellow', 'black', 'red', 'purple'] as const).map((theme) => {
+                const isSelected = autoplayTheme === theme;
+                return (
+                  <button
+                    key={theme}
+                    type="button"
+                    onClick={() => setAutoplayTheme(theme)}
+                    className={`px-2.5 py-1 text-[11px] rounded font-bold transition-all cursor-pointer ${
+                      isSelected ? 'ring-2 ring-blue-500 ring-offset-1 scale-105' : 'opacity-80 hover:opacity-100'
+                    } ${
+                      theme === 'yellow' ? 'bg-amber-400 text-black font-extrabold' :
+                      theme === 'black' ? 'bg-slate-900 text-white' :
+                      theme === 'red' ? 'bg-rose-600 text-white' : 'bg-purple-600 text-white'
+                    }`}
+                  >
+                    {theme === 'yellow' ? 'Amarelo (Padrão)' : theme === 'black' ? 'Preto' : theme === 'red' ? 'Vermelho' : 'Roxo'}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Main Embed Section */}
+          {/* Embed Mode Selection matching user screenshot */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-semibold text-slate-800">Copie o Código de Embed</h4>
-                <p className="text-[11px] text-slate-400">Use o código abaixo para inserir o vídeo diretamente no seu site</p>
+                <p className="text-[11px] text-slate-400">Cole no Elementor, WordPress ou HTML da sua PV</p>
               </div>
 
-              {/* Segmented JavaScript / iFrame switch with "Recomendado" badge */}
-              <div className="flex flex-col items-center">
-                <div className="mb-1 text-[10px] text-blue-600 font-semibold px-2 py-0.2 rounded-md border border-blue-400 bg-blue-50/70">
-                  Recomendado
-                </div>
-                <div className="inline-flex rounded-lg border border-blue-400 p-0.5 bg-white shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setEmbedType('js')}
-                    className={`px-4 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                      embedType === 'js'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-blue-600 hover:bg-blue-50'
-                    }`}
-                  >
-                    JavaScript
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEmbedType('iframe')}
-                    className={`px-4 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                      embedType === 'iframe'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-blue-600 hover:bg-blue-50'
-                    }`}
-                  >
-                    iFrame
-                  </button>
-                </div>
+              {/* Segmented Mode Switch */}
+              <div className="inline-flex rounded-lg border border-blue-400 p-0.5 bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setEmbedMode('short')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    embedMode === 'short'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  Tag Rápida (Curto)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmbedMode('inline')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    embedMode === 'inline'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  JavaScript Direto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmbedMode('iframe')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    embedMode === 'iframe'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  iFrame
+                </button>
               </div>
             </div>
 
-            {/* Code Textarea Box with Copy Icon on Top Right */}
+            {/* Code Textarea Box with Top-Right Copy Button */}
             <div className="relative border border-slate-300 rounded-lg bg-slate-50/50 p-3 hover:border-slate-400 transition-colors">
               <button
                 type="button"
-                onClick={() => copyToClipboard(currentMainCode, false)}
+                onClick={() => copyToClipboard(getActiveCode(), false)}
                 title="Copiar código"
-                className="absolute top-2.5 right-2.5 p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-200/60 transition-colors"
+                className="absolute top-2.5 right-2.5 p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
               >
                 {copiedMain ? (
                   <Check className="w-4 h-4 text-emerald-600" />
@@ -328,15 +466,20 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
 
               <textarea
                 readOnly
-                value={currentMainCode}
-                rows={4}
+                value={getActiveCode()}
+                rows={embedMode === 'short' ? 2 : 4}
                 className="w-full pr-8 text-xs font-mono text-slate-700 bg-transparent resize-none focus:outline-none select-all leading-relaxed"
               />
             </div>
+            {embedMode === 'short' && (
+              <p className="text-[11px] text-slate-500">
+                ⭐ <strong>Formato recomendado:</strong> Carrega <code>player.js</code> assincronamente com suporte nativo a Bunny HLS e ThumbSniper.
+              </p>
+            )}
           </div>
 
-          {/* Otimizar Velocidade de Carregamento Toggle */}
-          <div className="space-y-3 pt-3">
+          {/* Otimizar Velocidade de Carregamento Toggle matching screenshot */}
+          <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-semibold text-slate-800">Otimizar Velocidade de Carregamento</h4>
@@ -356,25 +499,21 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
 
             {optimizeSpeed && (
               <>
-                {/* Blue Info Box matching screenshot */}
                 <div className="bg-sky-50 border border-sky-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-sky-950">
                   <Info className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
                     <strong>Instruções de uso:</strong> Cole o código abaixo na tag{' '}
                     <code className="bg-sky-100 text-sky-800 px-1 py-0.5 rounded font-mono font-bold">&lt;head&gt;</code>{' '}
-                    do seu site. Ao fazer isso, o VeloTurb vai carregar mais rápido na sua página 😊! Está com dúvidas?{' '}
-                    <span className="text-blue-600 font-bold hover:underline cursor-pointer">Clique aqui</span>{' '}
-                    para pedir ajuda ao nosso suporte.
+                    do seu site. Ao fazer isso, o VeloTurb vai carregar mais rápido na sua página 😊!
                   </p>
                 </div>
 
-                {/* Preload Code Textarea */}
                 <div className="relative border border-slate-300 rounded-lg bg-slate-50/50 p-3 hover:border-slate-400 transition-colors">
                   <button
                     type="button"
                     onClick={() => copyToClipboard(headPreloadCode, true)}
                     title="Copiar código do head"
-                    className="absolute top-2.5 right-2.5 p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-200/60 transition-colors"
+                    className="absolute top-2.5 right-2.5 p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
                   >
                     {copiedHead ? (
                       <Check className="w-4 h-4 text-emerald-600" />
