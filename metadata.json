@@ -1,0 +1,6 @@
+{
+  "name": "VeloTurb - Player & Hospedagem de Alta Conversão para VSL",
+  "description": "Hospedagem ultra-rápida e player otimizado para páginas de vendas VSL com Smart Autoplay, Pitch Delay e código pronto para colar na sua PV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
