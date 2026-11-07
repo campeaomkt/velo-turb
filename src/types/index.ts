@@ -5,6 +5,7 @@ export interface PlayerSettings {
   smartAutoplayTheme: 'yellow' | 'black' | 'red' | 'purple';
   fakeProgressBar: boolean;
   fakeProgressSpeed: 'moderate' | 'fast';
+  onlyProgressBar: boolean; // VSL standard: only shows bottom progress bar, hides play/pause/timestamps
   hideControls: boolean;
   allowPause: boolean;
   resumePlayback: boolean;

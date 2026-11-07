@@ -354,8 +354,27 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
 
                 {/* Player Controls Toggle */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900">Controles do Usuário</h4>
-                  <div className="space-y-2 text-xs">
+                  <h4 className="text-xs font-bold text-slate-900">Estilo dos Controles do Player</h4>
+                  
+                  {/* Highlighted VSL Professional Mode option */}
+                  <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-extrabold text-rose-900 flex items-center gap-1.5">
+                        🔥 Modo VSL Profissional (Apenas Barra de Progresso)
+                      </span>
+                      <p className="text-[11px] text-rose-800 leading-relaxed">
+                        Oculta botões de play, pause, volume, tempo decorrido e tela cheia. O visitante vê apenas o vídeo rodando e a barra de progresso sutil na base, impedindo que saiba a duração ou desista antes da oferta.
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={formData.settings.onlyProgressBar ?? true}
+                      onChange={(e) => updateSetting('onlyProgressBar', e.target.checked)}
+                      className="w-5 h-5 accent-rose-600 rounded cursor-pointer shrink-0 mt-1"
+                    />
+                  </div>
+
+                  <div className="space-y-2 text-xs pt-1">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -363,7 +382,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         onChange={(e) => updateSetting('allowPause', e.target.checked)}
                         className="w-4 h-4 accent-rose-600 rounded"
                       />
-                      <span>Permitir pausar o vídeo (recomendado desmarcar para VSLs agressivas)</span>
+                      <span>Permitir pausar ao clicar no vídeo (desmarcado = VSL contínua sem pausa)</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -383,7 +402,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         onChange={(e) => updateSetting('hideControls', e.target.checked)}
                         className="w-4 h-4 accent-rose-600 rounded"
                       />
-                      <span>Ocultar barra de controle inferior completamente (Modo VSL Pura)</span>
+                      <span>Ocultar até mesmo a barra de progresso (Vídeo 100% limpo)</span>
                     </label>
                   </div>
                 </div>

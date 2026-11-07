@@ -91,14 +91,31 @@ export function generateSmartPlayerEmbed(video: VideoItem): string {
   } catch(e) {}
   ` : ''}
 
-  // Ativação do áudio (Smart Autoplay Unmute)
-  if (unmuteBtn) {
-    unmuteBtn.addEventListener('click', function() {
+  // Ativação do áudio (Smart Autoplay Unmute Hook):
+  // Quando o lead clica na faixa de áudio ou no vídeo, o vídeo reinicia do COMEÇO (00:00) com SOM ATIVADO!
+  function activateSoundAndRestart() {
+    try {
+      vid.currentTime = 0;
       vid.muted = false;
+      vid.volume = 1;
       vid.play();
-      unmuteBtn.style.display = 'none';
+      if (unmuteBtn) unmuteBtn.style.display = 'none';
+    } catch(e) {}
+  }
+
+  if (unmuteBtn) {
+    unmuteBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      activateSoundAndRestart();
     });
   }
+
+  // Se clicar no vídeo durante o autoplay mudo, também reinicia do 0 com som
+  vid.addEventListener('click', function(e) {
+    if (vid.muted || (unmuteBtn && unmuteBtn.style.display !== 'none')) {
+      activateSoundAndRestart();
+    }
+  });
 
   // Atualização da barra de progresso
   vid.addEventListener('timeupdate', function() {

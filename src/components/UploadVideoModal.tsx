@@ -112,6 +112,7 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
         smartAutoplayTheme: 'yellow',
         fakeProgressBar: true,
         fakeProgressSpeed: 'fast',
+        onlyProgressBar: true, // Modo VSL Profissional
         hideControls: false,
         allowPause: true,
         resumePlayback: true,

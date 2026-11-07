@@ -86,15 +86,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const handleUnmuteClick = () => {
+  const handleUnmuteClick = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const vid = videoRef.current;
     if (!vid) return;
 
+    // Smart Autoplay hook: Restart from beginning (00:00) with audio!
+    vid.currentTime = 0;
     vid.muted = false;
     setIsMuted(false);
     setShowAutoplayBanner(false);
-    vid.play();
-    setIsPlaying(true);
+    const playPromise = vid.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => setIsPlaying(true)).catch(() => {});
+    }
+  };
+
+  const handleVideoClick = () => {
+    // If the video is running muted in Smart Autoplay teaser mode, clicking anywhere unmutes & restarts from 0
+    if (isMuted || showAutoplayBanner) {
+      handleUnmuteClick();
+      return;
+    }
+    togglePlay();
   };
 
   const togglePlay = () => {
@@ -141,21 +155,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Skip to pitch button helper (for testing in dashboard / PV)
-  const jumpToPitch = () => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    const target = Math.max(0, (video.settings.pitchDelaySeconds || 15) - 2);
-    vid.currentTime = target;
-    vid.play();
-    setIsPlaying(true);
-  };
-
   // Progress percentage calculation (supports fake progress bar!)
   const actualPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const progressPercent = video.settings.fakeProgressBar
     ? Math.min(100, Math.pow(actualPercent / 100, 0.55) * 100)
     : actualPercent;
+
+  const isProfessionalVSL = video.settings.onlyProgressBar || video.settings.hideControls;
 
   const bannerThemeClasses = {
     yellow: 'bg-amber-400 text-slate-950 shadow-amber-500/30',
@@ -196,23 +202,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         playsInline
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => setIsPlaying(false)}
-        onClick={togglePlay}
+        onClick={handleVideoClick}
         className="w-full h-full object-contain cursor-pointer bg-black"
       />
-
-      {/* Pitch Quick Jump Tag in Preview/Simulation */}
-      {isSimulatedSalesPage && (
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-md border border-white/10">
-          <span>Pitch em: {Math.floor((video.settings.pitchDelaySeconds || 0) / 60)}m {(video.settings.pitchDelaySeconds || 0) % 60}s</span>
-          <button
-            onClick={jumpToPitch}
-            title="Avançar para 2s antes do pitch para testar o botão"
-            className="ml-2 text-rose-400 hover:text-rose-300 font-semibold underline flex items-center gap-0.5"
-          >
-            <FastForward className="w-3.5 h-3.5" /> Pular p/ Pitch
-          </button>
-        </div>
-      )}
 
       {/* Watermark Protection if enabled */}
       {video.settings.showWatermark && (
@@ -222,10 +214,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Video Center Play Overlay when paused and controls allowed */}
-      {!isPlaying && (
+      {/* Center Play Overlay when paused (only if not running in smart autoplay teaser) */}
+      {!isPlaying && !showAutoplayBanner && (
         <div
-          onClick={togglePlay}
+          onClick={handleVideoClick}
           className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 cursor-pointer backdrop-blur-[2px] transition-opacity"
         >
           <div
@@ -237,58 +229,60 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Bottom Controls Bar */}
-      <div
-        className={`absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-8 pb-2 px-4 transition-opacity duration-200 ${
-          showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="flex items-center justify-between text-white text-xs mb-2">
-          <div className="flex items-center gap-3">
-            {video.settings.allowPause && (
+      {/* Standard Bottom Controls Bar - HIDDEN in Professional VSL Mode! */}
+      {!isProfessionalVSL && (
+        <div
+          className={`absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-8 pb-2 px-4 transition-opacity duration-200 ${
+            showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <div className="flex items-center justify-between text-white text-xs mb-2">
+            <div className="flex items-center gap-3">
+              {video.settings.allowPause && (
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  className="hover:text-rose-400 transition-colors p-1"
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={togglePlay}
+                onClick={toggleMute}
                 className="hover:text-rose-400 transition-colors p-1"
               >
-                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
-            )}
 
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="hover:text-rose-400 transition-colors p-1"
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
+              <span className="font-mono text-[11px] text-white/80 tabular-nums">
+                {Math.floor(currentTime / 60)}:{(Math.floor(currentTime % 60)).toString().padStart(2, '0')} / {Math.floor(duration / 60)}:{(Math.floor(duration % 60)).toString().padStart(2, '0')}
+              </span>
+            </div>
 
-            <span className="font-mono text-[11px] text-white/80 tabular-nums">
-              {Math.floor(currentTime / 60)}:{(Math.floor(currentTime % 60)).toString().padStart(2, '0')} / {Math.floor(duration / 60)}:{(Math.floor(duration % 60)).toString().padStart(2, '0')}
-            </span>
-          </div>
+            <div className="flex items-center gap-3">
+              {video.settings.speedControl && (
+                <button
+                  type="button"
+                  onClick={handleSpeedChange}
+                  className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 font-mono text-[11px] transition-colors"
+                >
+                  {speed}x
+                </button>
+              )}
 
-          <div className="flex items-center gap-3">
-            {video.settings.speedControl && (
               <button
                 type="button"
-                onClick={handleSpeedChange}
-                className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 font-mono text-[11px] transition-colors"
+                onClick={toggleFullscreen}
+                className="hover:text-rose-400 transition-colors p-1"
               >
-                {speed}x
+                <Maximize className="w-4 h-4" />
               </button>
-            )}
-
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="hover:text-rose-400 transition-colors p-1"
-            >
-              <Maximize className="w-4 h-4" />
-            </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* High-Converting Custom Progress Bar */}
       <div
