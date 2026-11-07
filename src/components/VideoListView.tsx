@@ -21,6 +21,7 @@ import {
   Check,
   ChevronRight,
   FolderOpen,
+  Settings,
 } from 'lucide-react';
 import { VideoItem, Folder } from '../types';
 import { MoveVideoModal } from './MoveVideoModal';
@@ -371,10 +372,10 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
       )}
 
       {/* Main Table Container (matching image_3cb5e0ce.png) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs relative">
         
         {/* Table Header */}
-        <div className="grid grid-cols-12 items-center px-5 py-3 border-b border-slate-100 text-xs font-bold text-slate-500 select-none bg-slate-50/40">
+        <div className="grid grid-cols-12 items-center px-5 py-3 border-b border-slate-100 text-xs font-bold text-slate-500 select-none bg-slate-50/60 rounded-t-2xl">
           <div className="col-span-1 flex items-center gap-3">
             <input
               type="checkbox"
@@ -514,64 +515,83 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setActiveMenuId(activeMenuId === folder.id ? null : folder.id)}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuId(activeMenuId === folder.id ? null : folder.id);
+                      }}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        activeMenuId === folder.id
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
                       <MoreVertical className="w-4 h-4" />
                     </button>
 
                     {activeMenuId === folder.id && (
-                      <div className="absolute right-0 top-8 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 text-xs animate-in fade-in duration-100">
-                        <button
-                          onClick={() => {
-                            onSelectFolder(folder.id);
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActiveMenuId(null);
                           }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                        />
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1 z-50 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 text-xs animate-in fade-in duration-100"
                         >
-                          <FolderOpen className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Abrir Pasta</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            onOpenUpload(folder.id);
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <Upload className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Adicionar Vídeo Aqui</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenMoveModalForFolderDestination(folder)}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Mover Vídeos para Cá</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setRenamingFolder(folder);
-                            setRenameValue(folder.name);
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Renomear Pasta</span>
-                        </button>
-                        <div className="my-1 border-t border-slate-100" />
-                        <button
-                          onClick={() => {
-                            setFolderToDelete(folder);
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Apagar Pasta</span>
-                        </button>
-                      </div>
+                          <button
+                            onClick={() => {
+                              onSelectFolder(folder.id);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Abrir Pasta</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              onOpenUpload(folder.id);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Adicionar Vídeo Aqui</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenMoveModalForFolderDestination(folder)}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Mover Vídeos para Cá</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setRenamingFolder(folder);
+                              setRenameValue(folder.name);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Renomear Pasta</span>
+                          </button>
+                          <div className="my-1 border-t border-slate-100" />
+                          <button
+                            onClick={() => {
+                              setFolderToDelete(folder);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Apagar Pasta</span>
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -621,8 +641,9 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
 
                   <div className="min-w-0">
                     <span
-                      onClick={() => onOpenSimulator(video)}
+                      onClick={() => onOpenEdit(video)}
                       className="text-sm font-bold text-slate-900 hover:text-blue-600 transition-colors truncate block cursor-pointer"
+                      title="Clique para configurar este vídeo"
                     >
                       {video.title}
                     </span>
@@ -650,13 +671,19 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                   {video.plays.toLocaleString('pt-BR')}
                 </div>
 
-                {/* Actions (matching image_3cb5e0ce.png video actions: piechart, embed </>, 3-dots) */}
-                <div className="col-span-5 sm:col-span-2 flex items-center justify-end gap-1.5 relative">
+                {/* Actions (matching image_3cb5e0ce.png video actions: piechart, embed </>, direct Settings gear, 3-dots) */}
+                <div
+                  className="col-span-5 sm:col-span-2 flex items-center justify-end gap-1.5 relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Analytics Icon */}
                   <button
                     type="button"
                     title="Métricas de retenção e plays"
-                    onClick={() => onOpenAnalytics(video)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenAnalytics(video);
+                    }}
                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <PieChart className="w-4 h-4" />
@@ -666,10 +693,26 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                   <button
                     type="button"
                     title="Copiar código embed para PV"
-                    onClick={() => onOpenEmbed(video)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenEmbed(video);
+                    }}
                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <Code2 className="w-4 h-4 stroke-[2.2]" />
+                  </button>
+
+                  {/* DIRECT Settings Icon Button - NO DROPDOWN REQUIRED */}
+                  <button
+                    type="button"
+                    title="Configurar Player, ThumbSniper e Conversão"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenEdit(video);
+                    }}
+                    className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4 stroke-[2.2]" />
                   </button>
 
                   {/* 3-dots menu */}
@@ -680,59 +723,74 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                         e.stopPropagation();
                         setActiveMenuId(activeMenuId === video.id ? null : video.id);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        activeMenuId === video.id
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
                       <MoreVertical className="w-4 h-4" />
                     </button>
 
                     {activeMenuId === video.id && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 top-8 z-30 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 text-xs animate-in fade-in duration-100"
-                      >
-                        {/* Mover para pasta (Explicit User Request!) */}
-                        <button
-                          onClick={() => handleOpenMoveModalForSingle(video)}
-                          className="w-full text-left px-3.5 py-2 font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <FolderPlus className="w-3.5 h-3.5" />
-                          <span>Mover para Pasta...</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            onOpenEdit(video);
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActiveMenuId(null);
                           }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                        />
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1 z-50 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 text-xs animate-in fade-in duration-100"
                         >
-                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Configurar Player & Pitch</span>
-                        </button>
+                          {/* Configurar Player & Pitch */}
+                          <button
+                            onClick={() => {
+                              onOpenEdit(video);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-bold text-slate-800 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Settings className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Configurar Player & Pitch</span>
+                          </button>
 
-                        <button
-                          onClick={() => {
-                            onOpenThumbSniper(video);
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <Crosshair className="w-3.5 h-3.5 text-rose-500" />
-                          <span>ThumbSniper™</span>
-                        </button>
+                          {/* ThumbSniper */}
+                          <button
+                            onClick={() => {
+                              onOpenThumbSniper(video);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Crosshair className="w-3.5 h-3.5 text-rose-500" />
+                            <span>ThumbSniper™</span>
+                          </button>
 
-                        <button
-                          onClick={() => {
-                            onOpenSimulator(video);
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Ver no Simulador de PV</span>
-                        </button>
+                          {/* Mover para pasta */}
+                          <button
+                            onClick={() => handleOpenMoveModalForSingle(video)}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <FolderPlus className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Mover para Pasta...</span>
+                          </button>
 
-                        <div className="my-1 border-t border-slate-100" />
+                          {/* Ver no Simulador */}
+                          <button
+                            onClick={() => {
+                              onOpenSimulator(video);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-3.5 py-2 font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Ver no Simulador de PV</span>
+                          </button>
+
+                          <div className="my-1 border-t border-slate-100" />
 
                         {video.isTrash ? (
                           <button
@@ -758,9 +816,10 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                           </button>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
+              </div>
 
               </div>
             );

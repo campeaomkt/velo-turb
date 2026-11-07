@@ -23,12 +23,54 @@ import { ThumbSniperModal } from './components/ThumbSniperModal';
 import { INITIAL_VIDEOS, INITIAL_FOLDERS, INITIAL_AB_TESTS } from './data/mockVideos';
 import { VideoItem, Folder, ABTest, ActiveTab } from './types';
 
+const BANNED_MOCK_IDS = ['fld_vsl_core', 'fld_upsell', 'fld_captura', 'fld_webinar'];
+const BANNED_VIDEO_IDS = ['vt_vsl_98214', 'vt_vsl_44102', 'vt_vsl_77309', 'vt_vsl_12093'];
+
 export default function App() {
-  const [videos, setVideos] = useState<VideoItem[]>(INITIAL_VIDEOS);
-  const [folders, setFolders] = useState<Folder[]>(INITIAL_FOLDERS);
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    try {
+      const saved = localStorage.getItem('veloturb_folders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter((f) => !BANNED_MOCK_IDS.includes(f.id));
+          if (cleaned.length > 0) return cleaned;
+        }
+      }
+    } catch (e) {}
+    return INITIAL_FOLDERS;
+  });
+
+  const [videos, setVideos] = useState<VideoItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('veloturb_videos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter((v) => !BANNED_VIDEO_IDS.includes(v.id));
+          if (cleaned.length > 0) return cleaned;
+        }
+      }
+    } catch (e) {}
+    return INITIAL_VIDEOS;
+  });
+
   const [abTests, setAbTests] = useState<ABTest[]>(INITIAL_AB_TESTS);
   const [activeTab, setActiveTab] = useState<ActiveTab>('videos');
   const [activeFolderId, setActiveFolderId] = useState<string>('all');
+
+  // Sync to localStorage whenever folders or videos change
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('veloturb_folders', JSON.stringify(folders));
+    } catch (e) {}
+  }, [folders]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('veloturb_videos', JSON.stringify(videos));
+    } catch (e) {}
+  }, [videos]);
 
   // Modals state
   const [selectedEmbedVideo, setSelectedEmbedVideo] = useState<VideoItem | null>(null);
