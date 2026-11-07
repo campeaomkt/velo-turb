@@ -28,6 +28,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
   const [showThumbSniperModal, setShowThumbSniperModal] = useState(false);
   const [pitchMinutes, setPitchMinutes] = useState(Math.floor((video.settings.pitchDelaySeconds || 0) / 60));
   const [pitchSeconds, setPitchSeconds] = useState((video.settings.pitchDelaySeconds || 0) % 60);
+  const [previewResumePrompt, setPreviewResumePrompt] = useState(false);
 
   if (!isOpen) return null;
 
@@ -329,24 +330,122 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                   </div>
                 </div>
 
-                {/* Resume Playback */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                {/* Resume Playback (Card Laranja de Retomada Inteligente - image_8f1ffac5.png) */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
                         Retomada Inteligente (Resume Playback)
                       </h4>
                       <p className="text-[11px] text-slate-500">
-                        Se o lead recarregar a página, continua automaticamente do minuto em que parou.
+                        Quando o lead sai e volta ao site, exibe aviso para continuar de onde parou ou recomeçar.
                       </p>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.settings.resumePlayback}
-                      onChange={(e) => updateSetting('resumePlayback', e.target.checked)}
-                      className="w-5 h-5 accent-rose-600 rounded cursor-pointer"
-                    />
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.settings.resumePlayback}
+                        onChange={(e) => updateSetting('resumePlayback', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
+                    </label>
                   </div>
+
+                  {formData.settings.resumePlayback && (
+                    <div className="space-y-3 pt-2 border-t border-slate-200">
+                      
+                      {/* Language Selection: PT-BR vs ES-LATAM */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">
+                          Idioma do Aviso de Retomada:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateSetting('resumePlaybackLanguage', 'pt');
+                              updateSetting('resumePlaybackTitle', 'Você já começou a assistir esse vídeo');
+                              updateSetting('resumePlaybackContinueText', 'Continuar assistindo?');
+                              updateSetting('resumePlaybackRestartText', 'Assistir do início?');
+                            }}
+                            className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              (formData.settings.resumePlaybackLanguage || 'pt') === 'pt'
+                                ? 'bg-orange-50 border-orange-500 text-orange-950 shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span>🇧🇷</span>
+                            <span>Português (Brasil)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateSetting('resumePlaybackLanguage', 'es');
+                              updateSetting('resumePlaybackTitle', 'Ya has comenzado a ver este video');
+                              updateSetting('resumePlaybackContinueText', '¿Continuar viendo?');
+                              updateSetting('resumePlaybackRestartText', '¿Ver desde el inicio?');
+                            }}
+                            className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              formData.settings.resumePlaybackLanguage === 'es'
+                                ? 'bg-orange-50 border-orange-500 text-orange-950 shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span>🌎</span>
+                            <span>Español (LATAM)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Visual Preview of the Card matching image_8f1ffac5.png */}
+                      <div className="p-3 bg-slate-900 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                          <span>PRÉ-VISUALIZAÇÃO DO AVISO:</span>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewResumePrompt(!previewResumePrompt)}
+                            className="text-orange-400 hover:text-orange-300 underline font-bold cursor-pointer"
+                          >
+                            {previewResumePrompt ? 'Fechar no Player' : 'Testar no Player ao Lado'}
+                          </button>
+                        </div>
+
+                        <div className="bg-[#EB6B09] rounded-xl p-4 text-white text-center shadow-lg border border-orange-400/30">
+                          <h5 className="font-extrabold text-sm sm:text-base leading-snug mb-3 drop-shadow-xs">
+                            {formData.settings.resumePlaybackLanguage === 'es'
+                              ? 'Ya has comenzado a ver este video'
+                              : 'Você já começou a assistir esse vídeo'}
+                          </h5>
+                          <div className="flex items-center justify-center gap-4 text-xs font-bold">
+                            <div className="flex items-center gap-1.5 opacity-95">
+                              <div className="w-5 h-5 rounded-full border border-white flex items-center justify-center">
+                                <Play className="w-2.5 h-2.5 fill-white text-white ml-0.2" />
+                              </div>
+                              <span>
+                                {formData.settings.resumePlaybackLanguage === 'es'
+                                  ? '¿Continuar viendo?'
+                                  : 'Continuar assistindo?'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 opacity-95">
+                              <div className="w-5 h-5 rounded-full border border-white flex items-center justify-center">
+                                <RotateCcw className="w-2.5 h-2.5 text-white" />
+                              </div>
+                              <span>
+                                {formData.settings.resumePlaybackLanguage === 'es'
+                                  ? '¿Ver desde el inicio?'
+                                  : 'Assistir do início?'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -709,6 +808,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               <VideoPlayer
                 video={formData}
                 isSimulatedSalesPage={true}
+                forceShowResumePrompt={previewResumePrompt}
               />
             </div>
 

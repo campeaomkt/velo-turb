@@ -1,7 +1,9 @@
 /**
  * VeloTurb SmartPlayer - High Conversion VSL Player Runtime
- * Suporte a Bunny Stream HLS (.m3u8), Embed Iframe Fallback e MP4 Nativo
- * Versão: 2.2.0
+ * Suporte a Bunny Stream HLS (.m3u8), Embed Iframe Fallback, MP4 Nativo,
+ * Retomada Inteligente (Resume Playback) em Português e Espanhol LATAM,
+ * e Isolamento de Linha (Full-Width Row Protection).
+ * Versão: 2.4.0
  */
 (function(window, document) {
   'use strict';
@@ -55,6 +57,8 @@
     var inlineLibraryId = container.getAttribute('data-bunny-library-id') || '802485';
     var inlineBunnyVideoId = container.getAttribute('data-bunny-video-id') || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7';
     var inlinePoster = container.getAttribute('data-poster') || 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/thumbnail.jpg';
+    var inlineResume = container.getAttribute('data-resume') !== 'false';
+    var inlineResumeLang = container.getAttribute('data-resume-lang') || 'pt';
 
     // Se o elemento já possui os atributos de mídia, renderiza IMEDIATAMENTE sem esperar API
     if (inlineSrc || inlineBunnyVideoId) {
@@ -70,6 +74,8 @@
         smartAutoplay: true,
         smartAutoplayText: container.getAttribute('data-autoplay-text') || 'Seu vídeo já começou! Clique para ouvir áudio',
         smartAutoplayTheme: container.getAttribute('data-autoplay-theme') || 'yellow',
+        resumePlayback: inlineResume,
+        resumePlaybackLanguage: inlineResumeLang,
         onlyProgressBar: true,
         thumbSniper: { enabled: true, templateId: 'ts_01' }
       });
@@ -99,7 +105,6 @@
         renderPlayer(container, videoConfig);
       })
       .catch(function() {
-        // Fallback robusto para o vídeo oficial do usuário (AEVO PRO BR)
         renderPlayer(container, {
           id: videoId || 'vt_vsl_aevo_pro',
           src: 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/playlist.m3u8',
@@ -112,6 +117,8 @@
           smartAutoplay: true,
           smartAutoplayText: 'Seu vídeo já começou! Clique para ouvir áudio',
           smartAutoplayTheme: 'yellow',
+          resumePlayback: true,
+          resumePlaybackLanguage: 'pt',
           onlyProgressBar: true,
           thumbSniper: { enabled: true, templateId: 'ts_01' }
         });
@@ -125,8 +132,19 @@
     var smartAutoplayTheme = config.smartAutoplayTheme || (config.settings && config.settings.smartAutoplayTheme) || 'yellow';
     var pitchDelay = config.pitchDelaySeconds || config.pitchDelay || (config.settings && config.settings.pitchDelaySeconds) || 500;
 
+    var resumeEnabled = config.resumePlayback !== false && (config.settings ? config.settings.resumePlayback !== false : true);
+    var resumeLang = config.resumePlaybackLanguage || (config.settings && config.settings.resumePlaybackLanguage) || 'pt';
+    var isSpanish = resumeLang === 'es';
+
+    var resumeTexts = {
+      title: isSpanish ? 'Ya has comenzado a ver este video' : 'Você já começou a assistir esse vídeo',
+      continueBtn: isSpanish ? '¿Continuar viendo?' : 'Continuar assistindo?',
+      restartBtn: isSpanish ? '¿Ver desde el inicio?' : 'Assistir do início?'
+    };
+
     var libraryId = config.bunnyLibraryId || '802485';
     var videoId = config.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7';
+    var estimatedDuration = config.duration || 537;
 
     var themeStyles = {
       yellow: { bg: '#FACC15', color: '#000000' },
@@ -135,8 +153,15 @@
       purple: { bg: '#8B5CF6', color: '#FFFFFF' }
     }[smartAutoplayTheme] || { bg: '#FACC15', color: '#000000' };
 
+    // Estilos de isolamento total do container: NUNCA quebra o layout da página
+    container.style.display = 'block';
     container.style.position = 'relative';
     container.style.width = '100%';
+    container.style.maxWidth = '100%';
+    container.style.margin = '0 auto';
+    container.style.clear = 'both';
+    container.style.flex = '0 0 100%'; // Evita que containers flex joguem o CTA para o lado
+    container.style.boxSizing = 'border-box';
     container.style.backgroundColor = '#000000';
     container.style.borderRadius = '8px';
     container.style.overflow = 'hidden';
@@ -147,27 +172,77 @@
     var videoType = config.type || detectVideoType(videoSrc);
     var posterUrl = config.poster || config.thumbnailUrl || '';
 
-    // Renderiza Player com suporte dual (Tag de Vídeo HLS + Fallback Iframe Bunny com postMessage)
+    // Verifica progresso gravado no localStorage
+    var savedTime = 0;
+    var storageKey = 'veloturb_time_' + (config.id || videoId);
+    if (resumeEnabled) {
+      try {
+        var s = localStorage.getItem(storageKey);
+        if (s) savedTime = parseFloat(s);
+      } catch (e) {}
+    }
+    var shouldShowResumePrompt = resumeEnabled && savedTime > 5;
+
+    // Injeta CSS para esconder botões de CTA com as classes padrão do mercado
+    if (pitchDelay > 0 && !document.getElementById('veloturb-pitch-hide-style')) {
+      var pitchStyle = document.createElement('style');
+      pitchStyle.id = 'veloturb-pitch-hide-style';
+      pitchStyle.innerHTML =
+        '.esconder, .esconder-pitch, .delay, .ocultar, .veloturb-pitch, [data-veloturb-pitch], [data-pitch] { display: none !important; }' +
+        '@keyframes veloturbFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }';
+      document.head.appendChild(pitchStyle);
+    }
+
+    // Renderiza Player com suporte dual + Card Laranja de Retomada Inteligente (image_8f1ffac5.png)
     container.innerHTML =
-      '<div id="' + instanceId + '-box" style="position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;">' +
+      '<div id="' + instanceId + '-box" style="position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;clear:both;">' +
         // Smart Autoplay Banner
-        '<div id="' + instanceId + '-unmute" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';padding:10px 22px;border-radius:9999px;font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;white-space:nowrap;max-width:92%;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;">' +
+        '<div id="' + instanceId + '-unmute" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';padding:10px 22px;border-radius:9999px;font-weight:800;font-size:13.5px;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;white-space:nowrap;max-width:92%;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' +
           '<span style="font-weight:800;letter-spacing:-0.2px;">' + smartAutoplayText + '</span>' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' +
         '</div>' +
 
+        // Card Laranja de Retomada Inteligente (Exatamente o modelo VTurb de image_8f1ffac5.png)
+        '<div id="' + instanceId + '-resume" style="display:' + (shouldShowResumePrompt ? 'flex' : 'none') + ';position:absolute;inset:0;background:rgba(0,0,0,0.65);z-index:50;align-items:center;justify-content:center;padding:12px;cursor:default;">' +
+          '<div style="width:100%;max-width:560px;background:#eb6b09;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.25);position:relative;">' +
+            '<h3 style="color:#ffffff;font-size:21px;font-weight:800;margin:0 0 26px 0;line-height:1.2;letter-spacing:-0.4px;">' +
+              resumeTexts.title +
+            '</h3>' +
+            '<div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;">' +
+              // Botão Continuar Assistindo?
+              '<div id="' + instanceId + '-btn-continue" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 10px;border-radius:10px;transition:transform 0.15s ease;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+                '<div style="width:42px;height:42px;border-radius:50%;border:2px solid #ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);">' +
+                  '<svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="2" style="margin-left:2px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
+                '</div>' +
+                '<span style="color:#ffffff;font-weight:800;font-size:15px;white-space:nowrap;">' +
+                  resumeTexts.continueBtn +
+                '</span>' +
+              '</div>' +
+              // Botão Assistir do Início?
+              '<div id="' + instanceId + '-btn-restart" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 10px;border-radius:10px;transition:transform 0.15s ease;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+                '<div style="width:42px;height:42px;border-radius:50%;border:2px solid #ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);">' +
+                  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>' +
+                '</div>' +
+                '<span style="color:#ffffff;font-weight:800;font-size:15px;white-space:nowrap;">' +
+                  resumeTexts.restartBtn +
+                '</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
         // Tag <video> padrão HLS
         '<video id="' + instanceId + '-video" ' +
-          'playsinline webkit-playsinline muted autoplay preload="metadata" ' +
+          'playsinline webkit-playsinline muted ' + (shouldShowResumePrompt ? '' : 'autoplay') + ' preload="metadata" ' +
           (posterUrl ? 'poster="' + posterUrl + '" ' : '') +
           'style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000;" ' +
           'oncontextmenu="return false;">' +
         '</video>' +
 
-        // Iframe Fallback (Invisível até ser acionado se houver 403 / CORS no Bunny)
+        // Iframe Fallback
         '<iframe id="' + instanceId + '-iframe" ' +
-          'src="https://iframe.mediadelivery.net/embed/' + libraryId + '/' + videoId + '?autoplay=true&loop=false&muted=true&preload=true&responsive=true" ' +
+          'src="https://iframe.mediadelivery.net/embed/' + libraryId + '/' + videoId + '?autoplay=' + (shouldShowResumePrompt ? 'false' : 'true') + '&loop=false&muted=true&preload=true&responsive=true" ' +
           'style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;border:0;background:#000;" ' +
           'allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen>' +
         '</iframe>' +
@@ -203,6 +278,9 @@
     var video = document.getElementById(instanceId + '-video');
     var iframe = document.getElementById(instanceId + '-iframe');
     var unmuteBtn = document.getElementById(instanceId + '-unmute');
+    var resumeBox = document.getElementById(instanceId + '-resume');
+    var btnContinue = document.getElementById(instanceId + '-btn-continue');
+    var btnRestart = document.getElementById(instanceId + '-btn-restart');
     var progressBar = document.getElementById(instanceId + '-progress-bar');
     var progressBg = document.getElementById(instanceId + '-progress-bg');
     var thumbsniper = document.getElementById(instanceId + '-thumbsniper');
@@ -210,12 +288,12 @@
     var isIframeMode = false;
     var hlsInstance = null;
     var pitchTriggered = false;
+    var currentPlaybackSeconds = 0;
+    var isPlaying = !shouldShowResumePrompt;
 
-    // Ativa o modo Iframe Bunny quando CORS / 403 bloqueia a URL direta
     function activateIframeFallback() {
       if (isIframeMode) return;
       isIframeMode = true;
-      console.log('[VeloTurb] Ativando Bunny Embed Engine com proteção VeloTurb...');
       if (video) {
         video.style.display = 'none';
         video.pause();
@@ -254,16 +332,16 @@
           hls.attachMedia(video);
 
           hls.on(window.Hls.Events.MANIFEST_PARSED, function() {
-            video.play().catch(function() {
-              video.muted = true;
-              video.play();
-            });
+            if (!shouldShowResumePrompt) {
+              video.play().catch(function() {
+                video.muted = true;
+                video.play();
+              });
+            }
           });
 
           hls.on(window.Hls.Events.ERROR, function(event, data) {
-            console.warn('[VeloTurb] Erro HLS:', data.type, data.details);
             if (data.fatal) {
-              // Se falhar a leitura direta da URL HLS por 403 ou CORS, cai no Bunny Iframe automaticamente!
               activateIframeFallback();
             }
           });
@@ -271,20 +349,141 @@
       }
     } else {
       video.src = videoSrc;
-      video.play().catch(function() {
-        video.muted = true;
-        video.play();
-      });
+      if (!shouldShowResumePrompt) {
+        video.play().catch(function() {
+          video.muted = true;
+          video.play();
+        });
+      }
     }
+
+    // Revela CTA quando o tempo de pitch for atingido
+    function triggerPitchReveal() {
+      if (pitchTriggered) return;
+      pitchTriggered = true;
+      console.log('[VeloTurb] Pitch Delay alcançado (' + pitchDelay + 's)! Revelando CTA.');
+      window.dispatchEvent(new CustomEvent('veloturb:pitch', { detail: { videoId: config.id } }));
+
+      var hideStyle = document.getElementById('veloturb-pitch-hide-style');
+      if (hideStyle) {
+        try { hideStyle.remove(); } catch (e) {}
+      }
+
+      var pitchElements = document.querySelectorAll('.esconder, .esconder-pitch, .delay, .ocultar, .veloturb-pitch, [data-veloturb-pitch], [data-pitch]');
+      for (var i = 0; i < pitchElements.length; i++) {
+        var el = pitchElements[i];
+        el.style.removeProperty('display');
+        el.style.display = 'block';
+        el.style.opacity = '1';
+        el.style.visibility = 'visible';
+        el.style.clear = 'both';
+        el.style.animation = 'veloturbFadeIn 0.8s ease-in-out forwards';
+      }
+    }
+
+    function updateProgress(curr, dur) {
+      var current = curr !== undefined ? curr : (isIframeMode ? currentPlaybackSeconds : (video ? video.currentTime : 0));
+      var total = dur || (video && video.duration ? video.duration : estimatedDuration);
+
+      // Salva progresso no localStorage a cada segundo
+      if (resumeEnabled && current > 3) {
+        try { localStorage.setItem(storageKey, current.toString()); } catch (e) {}
+      }
+
+      if (progressBar && total) {
+        var pct = (current / total) * 100;
+        var fakePct = Math.min(100, Math.pow(pct / 100, 0.55) * 100);
+        progressBar.style.width = fakePct + '%';
+      }
+
+      if (pitchDelay > 0 && current >= pitchDelay) {
+        triggerPitchReveal();
+      }
+    }
+
+    // Interações do Card de Retomada Inteligente
+    if (btnContinue) {
+      btnContinue.onclick = function(e) {
+        e.stopPropagation();
+        if (resumeBox) resumeBox.style.display = 'none';
+        isPlaying = true;
+
+        if (isIframeMode && iframe && iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: savedTime }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+          } catch (err) {}
+          currentPlaybackSeconds = savedTime;
+        } else if (video) {
+          video.currentTime = savedTime;
+          video.muted = false;
+          video.volume = 1;
+          video.play();
+        }
+
+        if (pitchDelay > 0 && savedTime >= pitchDelay) {
+          triggerPitchReveal();
+        }
+      };
+    }
+
+    if (btnRestart) {
+      btnRestart.onclick = function(e) {
+        e.stopPropagation();
+        if (resumeBox) resumeBox.style.display = 'none';
+        try { localStorage.removeItem(storageKey); } catch (err) {}
+        isPlaying = true;
+
+        if (isIframeMode && iframe && iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+          } catch (err) {}
+          currentPlaybackSeconds = 0;
+        } else if (video) {
+          video.currentTime = 0;
+          video.muted = false;
+          video.volume = 1;
+          video.play();
+        }
+      };
+    }
+
+    // Listener para o iframe Bunny Stream via window.message
+    window.addEventListener('message', function(e) {
+      try {
+        var data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data && (data.event === 'timeupdate' || data.method === 'timeupdate')) {
+          var sec = data.value && typeof data.value.seconds === 'number' ? data.value.seconds : data.value;
+          if (typeof sec === 'number') {
+            currentPlaybackSeconds = sec;
+            updateProgress(sec, estimatedDuration);
+          }
+        }
+      } catch (err) {}
+    });
+
+    setInterval(function() {
+      if (isIframeMode && isPlaying && !shouldShowResumePrompt) {
+        currentPlaybackSeconds += 1;
+        updateProgress(currentPlaybackSeconds, estimatedDuration);
+      }
+    }, 1000);
 
     // Unmute Action: Reinicia do 00:00 com áudio ativado
     function activateAudioAndRestart() {
+      if (shouldShowResumePrompt) return;
+
       if (isIframeMode && iframe && iframe.contentWindow) {
         try {
           iframe.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
           iframe.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
           iframe.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
         } catch (e) {}
+        currentPlaybackSeconds = 0;
+        isPlaying = true;
         if (unmuteBtn) unmuteBtn.style.display = 'none';
         return;
       }
@@ -306,6 +505,7 @@
     }
 
     video.onclick = function() {
+      if (shouldShowResumePrompt) return;
       if (video.muted || (unmuteBtn && unmuteBtn.style.display !== 'none')) {
         activateAudioAndRestart();
       } else if (video.paused) {
@@ -317,7 +517,7 @@
 
     if (thumbsniper) {
       video.addEventListener('pause', function() {
-        if (!video.ended && video.currentTime > 0.5) {
+        if (!shouldShowResumePrompt && !video.ended && video.currentTime > 0.5) {
           thumbsniper.style.display = 'flex';
         }
       });
@@ -331,33 +531,22 @@
       };
     }
 
-    function updateProgress() {
-      if (progressBar && video.duration) {
-        var pct = (video.currentTime / video.duration) * 100;
-        var fakePct = Math.min(100, Math.pow(pct / 100, 0.55) * 100);
-        progressBar.style.width = fakePct + '%';
-      }
-
-      if (pitchDelay > 0 && video.currentTime >= pitchDelay && !pitchTriggered) {
-        pitchTriggered = true;
-        window.dispatchEvent(new CustomEvent('veloturb:pitch', { detail: { videoId: config.id } }));
-        var pitchElements = document.querySelectorAll('.esconder-pitch, .veloturb-pitch, [data-veloturb-pitch]');
-        for (var i = 0; i < pitchElements.length; i++) {
-          pitchElements[i].style.display = 'block';
-          pitchElements[i].style.opacity = '1';
-        }
-      }
-    }
-
-    video.addEventListener('timeupdate', updateProgress);
-    video.addEventListener('loadedmetadata', updateProgress);
-    video.addEventListener('durationchange', updateProgress);
+    video.addEventListener('timeupdate', function() {
+      updateProgress(video.currentTime, video.duration);
+    });
+    video.addEventListener('loadedmetadata', function() {
+      updateProgress(video.currentTime, video.duration);
+    });
 
     if (progressBg) {
       progressBg.onclick = function(e) {
         var rect = progressBg.getBoundingClientRect();
         var clickX = (e.clientX - rect.left) / rect.width;
-        if (video.duration) {
+        if (isIframeMode && iframe && iframe.contentWindow) {
+          var targetSec = clickX * estimatedDuration;
+          currentPlaybackSeconds = targetSec;
+          iframe.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetSec }), '*');
+        } else if (video.duration) {
           video.currentTime = clickX * video.duration;
         }
       };
@@ -372,7 +561,7 @@
   }
 
   window.VeloTurb = {
-    version: '2.2.0',
+    version: '2.4.0',
     init: initPlayerInstance,
     scan: scanAndInitPlayers,
     detectVideoType: detectVideoType

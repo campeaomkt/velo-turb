@@ -1,14 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, ShieldCheck } from 'lucide-react';
 import Hls from 'hls.js';
 import { VideoItem } from '../types';
 import { ThumbSniperOverlay } from './ThumbSniperOverlay';
+import { ResumePlaybackOverlay } from './ResumePlaybackOverlay';
 
 interface VideoPlayerProps {
   video: VideoItem;
   onPitchReached?: () => void;
   isSimulatedSalesPage?: boolean;
   className?: string;
+  forceShowResumePrompt?: boolean; // Permite pré-visualizar o card no editor
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -16,6 +18,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onPitchReached,
   isSimulatedSalesPage = false,
   className = '',
+  forceShowResumePrompt = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -32,9 +35,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [pitchTriggered, setPitchTriggered] = useState(false);
   const [useBunnyEmbedFallback, setUseBunnyEmbedFallback] = useState(false);
 
+  // Resume Playback (Continuar assistindo) State
+  const [showResumePrompt, setShowResumePrompt] = useState(forceShowResumePrompt);
+  const [savedSeconds, setSavedSeconds] = useState(145); // default preview 2m25s
+
   const primaryColor = video.settings.primaryColor || '#E11D48';
 
-  // Extrai IDs da biblioteca e do vídeo Bunny se presentes
   const libraryId = video.bunnyLibraryId || '802485';
   const videoId =
     video.bunnyVideoId ||
@@ -50,6 +56,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.videoType === 'hls' ||
     (video.videoUrl && (video.videoUrl.includes('.m3u8') || video.videoUrl.includes('mediadelivery.net')));
 
+  // Check saved playback progress in localStorage on mount
+  useEffect(() => {
+    if (forceShowResumePrompt) {
+      setShowResumePrompt(true);
+      return;
+    }
+
+    if (video.settings.resumePlayback) {
+      try {
+        const saved = localStorage.getItem(`veloturb_time_${video.id}`);
+        if (saved) {
+          const parsed = parseFloat(saved);
+          if (parsed > 5) {
+            setSavedSeconds(parsed);
+            setShowResumePrompt(true);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+  }, [video.id, video.settings.resumePlayback, forceShowResumePrompt]);
+
   // Initialize playback and HLS / MP4 loader
   useEffect(() => {
     const vid = videoRef.current;
@@ -61,6 +89,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
 
     const startAutoplayIfNeeded = () => {
+      // Don't autoplay if resume prompt is active
+      if (showResumePrompt) return;
+
       if (video.settings.smartAutoplay) {
         vid.muted = true;
         setIsMuted(true);
@@ -96,7 +127,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           console.warn('[VeloTurb HLS Status]', data);
           if (data.fatal) {
             if (isBunny) {
-              console.log('[VeloTurb] Ativando fallback automático para Bunny Embed Engine (CORS/403 imune)...');
               setUseBunnyEmbedFallback(true);
               setIsPlaying(true);
             } else {
@@ -137,9 +167,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hlsRef.current = null;
       }
     };
-  }, [video.id, video.videoUrl, isHlsUrl, useBunnyEmbedFallback, isBunny, video.settings.smartAutoplay]);
+  }, [video.id, video.videoUrl, isHlsUrl, useBunnyEmbedFallback, isBunny, video.settings.smartAutoplay, showResumePrompt]);
 
-  // Handle time update
+  // Handle time update and save progress to localStorage
   const handleTimeUpdate = () => {
     const vid = videoRef.current;
     if (!vid) return;
@@ -147,6 +177,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setCurrentTime(vid.currentTime);
     if (vid.duration && !isNaN(vid.duration)) {
       setDuration(vid.duration);
+    }
+
+    // Persist position for resume playback
+    if (video.settings.resumePlayback && vid.currentTime > 3) {
+      try {
+        localStorage.setItem(`veloturb_time_${video.id}`, vid.currentTime.toString());
+      } catch (e) {}
     }
 
     // Check pitch delay trigger
@@ -159,10 +196,69 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  // Actions for Resume Playback Overlay
+  const handleResumeContinue = () => {
+    setShowResumePrompt(false);
+    setShowAutoplayBanner(false);
+
+    if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: savedSeconds }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+      } catch (e) {}
+      setIsMuted(false);
+      setIsPlaying(true);
+      return;
+    }
+
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    vid.currentTime = savedSeconds;
+    vid.muted = false;
+    setIsMuted(false);
+    vid.play().then(() => setIsPlaying(true)).catch(() => {});
+
+    // Check pitch trigger if saved time is past pitch
+    const pitchSeconds = video.settings.pitchDelaySeconds || 0;
+    if (pitchSeconds > 0 && savedSeconds >= pitchSeconds && !pitchTriggered) {
+      setPitchTriggered(true);
+      if (onPitchReached) onPitchReached();
+    }
+  };
+
+  const handleResumeRestart = () => {
+    setShowResumePrompt(false);
+    setShowAutoplayBanner(false);
+
+    try {
+      localStorage.removeItem(`veloturb_time_${video.id}`);
+    } catch (e) {}
+
+    if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+      } catch (e) {}
+      setIsMuted(false);
+      setIsPlaying(true);
+      return;
+    }
+
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    vid.currentTime = 0;
+    vid.muted = false;
+    setIsMuted(false);
+    vid.play().then(() => setIsPlaying(true)).catch(() => {});
+  };
+
   const handleUnmuteClick = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // Se estiver em modo Bunny Embed Fallback, usa postMessage para desmutar e reiniciar
     if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
       try {
         iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
@@ -187,6 +283,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleVideoClick = () => {
+    if (showResumePrompt) return;
     if (isMuted || showAutoplayBanner) {
       handleUnmuteClick();
       return;
@@ -274,8 +371,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       onMouseLeave={() => setShowControls(false)}
       className={`relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl select-none group ${className}`}
     >
-      {/* Smart Autoplay Banner Overlay */}
-      {showAutoplayBanner && (
+      {/* Resume Playback Prompt Overlay (matching image_8f1ffac5.png in PT and ES) */}
+      {showResumePrompt && (
+        <ResumePlaybackOverlay
+          language={video.settings.resumePlaybackLanguage || 'pt'}
+          customTitle={video.settings.resumePlaybackTitle}
+          customContinueText={video.settings.resumePlaybackContinueText}
+          customRestartText={video.settings.resumePlaybackRestartText}
+          savedSeconds={savedSeconds}
+          onContinue={handleResumeContinue}
+          onRestart={handleResumeRestart}
+        />
+      )}
+
+      {/* Smart Autoplay Banner Overlay (only when resume prompt is NOT active) */}
+      {showAutoplayBanner && !showResumePrompt && (
         <div className="absolute top-4 inset-x-0 z-30 flex justify-center px-4 pointer-events-auto">
           <button
             type="button"
@@ -330,7 +440,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       {/* Center Play Overlay OR ThumbSniper Overlay when paused */}
-      {!isPlaying && !showAutoplayBanner && (
+      {!isPlaying && !showAutoplayBanner && !showResumePrompt && (
         (video.settings.thumbSniper?.enabled ?? true) ? (
           <ThumbSniperOverlay
             settings={video.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }}
@@ -352,7 +462,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       {/* Standard Bottom Controls Bar */}
-      {!isProfessionalVSL && !useBunnyEmbedFallback && (
+      {!isProfessionalVSL && !useBunnyEmbedFallback && !showResumePrompt && (
         <div
           className={`absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-8 pb-2 px-4 transition-opacity duration-200 ${
             showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'

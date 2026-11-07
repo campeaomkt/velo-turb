@@ -9,6 +9,11 @@ export interface PlayerSettings {
   hideControls: boolean;
   allowPause: boolean;
   resumePlayback: boolean;
+  resumePlaybackPrompt?: boolean; // Exibe o card laranja de retomada inteligente (image_8f1ffac5.png)
+  resumePlaybackLanguage?: 'pt' | 'es'; // Português ou Espanhol LATAM
+  resumePlaybackTitle?: string;
+  resumePlaybackContinueText?: string;
+  resumePlaybackRestartText?: string;
   speedControl: boolean;
   antiDownload: boolean;
   domainLock: string;
