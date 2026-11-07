@@ -57,8 +57,8 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const isBlob = video.videoUrl?.startsWith('blob:');
   const isHls = videoSourceUrl.includes('.m3u8') || video.videoType === 'hls';
 
-  // Format 1: Ultra-clean short embed code requested by user
-  const shortEmbedCode = `<div id="veloturb-${video.id}" data-video-id="${video.id}" style="aspect-ratio:16/9;width:100%"></div>\n<script src="${origin}/player.js" async></script>`;
+  // Format 1: Ultra-clean short embed code com atributos inline para nunca falhar em hosts estáticos (Vercel, WordPress, etc.)
+  const shortEmbedCode = `<div id="veloturb-${video.id}" data-video-id="${video.id}" data-src="${videoSourceUrl}" data-type="${isHls ? 'hls' : 'mp4'}" data-bunny-library-id="${video.bunnyLibraryId || '802485'}" data-bunny-video-id="${video.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7'}" data-poster="${video.thumbnailUrl || ''}" data-pitch-delay="${video.settings.pitchDelaySeconds || 500}" data-primary-color="${primaryColor}" data-autoplay-text="${autoplayText}" data-autoplay-theme="${autoplayTheme}" style="aspect-ratio:16/9;width:100%"></div>\n<script src="${origin}/player.js" async></script>`;
 
   // Format 2: Self-contained Inline JavaScript with Hls.js loader, Smart Autoplay & ThumbSniper
   const inlineJsEmbedCode = `<veloturb-smartplayer id="vid-${video.id}" style="display: block; margin: 0 auto; width: 100%; max-width: 100%;">

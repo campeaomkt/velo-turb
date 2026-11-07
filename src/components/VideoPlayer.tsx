@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, ShieldCheck } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, ShieldCheck, AlertCircle } from 'lucide-react';
 import Hls from 'hls.js';
 import { VideoItem } from '../types';
 import { ThumbSniperOverlay } from './ThumbSniperOverlay';
@@ -18,6 +18,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   className = '',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -25,14 +26,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isMuted, setIsMuted] = useState(video.settings.smartAutoplay);
   const [showAutoplayBanner, setShowAutoplayBanner] = useState(video.settings.smartAutoplay);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(video.duration || 100);
+  const [duration, setDuration] = useState(video.duration || 537);
   const [speed, setSpeed] = useState(1);
   const [showControls, setShowControls] = useState(false);
   const [pitchTriggered, setPitchTriggered] = useState(false);
+  const [useBunnyEmbedFallback, setUseBunnyEmbedFallback] = useState(false);
 
   const primaryColor = video.settings.primaryColor || '#E11D48';
 
-  // Determine if stream is HLS
+  // Extrai IDs da biblioteca e do vídeo Bunny se presentes
+  const libraryId = video.bunnyLibraryId || '802485';
+  const videoId =
+    video.bunnyVideoId ||
+    (video.videoUrl.match(/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/) || [])[1] ||
+    'e0f24211-791e-4a84-99e9-1ac03bc1b5b7';
+
+  const isBunny =
+    video.videoUrl.includes('b-cdn.net') ||
+    video.videoUrl.includes('mediadelivery.net') ||
+    video.bunnyVideoId !== undefined;
+
   const isHlsUrl =
     video.videoType === 'hls' ||
     (video.videoUrl && (video.videoUrl.includes('.m3u8') || video.videoUrl.includes('mediadelivery.net')));
@@ -40,9 +53,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Initialize playback and HLS / MP4 loader
   useEffect(() => {
     const vid = videoRef.current;
-    if (!vid) return;
+    if (!vid || useBunnyEmbedFallback) return;
 
-    // Cleanup previous HLS instance if any
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -81,43 +93,42 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         });
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          console.warn('[VeloTurb HLS Error]', data);
+          console.warn('[VeloTurb HLS Status]', data);
           if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.log('[VeloTurb] Tentando recuperar de erro de rede HLS...');
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.log('[VeloTurb] Tentando recuperar de erro de mídia HLS...');
-                hls.recoverMediaError();
-                break;
-              default:
-                console.error('[VeloTurb] Erro fatal irrecuperável HLS:', data);
-                hls.destroy();
-                break;
+            if (isBunny) {
+              console.log('[VeloTurb] Ativando fallback automático para Bunny Embed Engine (CORS/403 imune)...');
+              setUseBunnyEmbedFallback(true);
+              setIsPlaying(true);
+            } else {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  hls.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  hls.destroy();
+                  break;
+              }
             }
           }
         });
       } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native Safari / iOS support
         vid.src = video.videoUrl;
         vid.addEventListener('loadedmetadata', () => {
           startAutoplayIfNeeded();
         }, { once: true });
+        vid.addEventListener('error', () => {
+          if (isBunny) {
+            setUseBunnyEmbedFallback(true);
+            setIsPlaying(true);
+          }
+        });
       }
     } else if (video.videoUrl) {
-      // Standard MP4
       vid.src = video.videoUrl;
       startAutoplayIfNeeded();
-    }
-
-    // Resume playback if enabled
-    if (video.settings.resumePlayback) {
-      const saved = localStorage.getItem(`veloturb_time_${video.id}`);
-      if (saved && parseFloat(saved) > 5) {
-        vid.currentTime = parseFloat(saved);
-      }
     }
 
     return () => {
@@ -126,7 +137,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hlsRef.current = null;
       }
     };
-  }, [video.id, video.videoUrl, isHlsUrl, video.settings.smartAutoplay, video.settings.resumePlayback]);
+  }, [video.id, video.videoUrl, isHlsUrl, useBunnyEmbedFallback, isBunny, video.settings.smartAutoplay]);
 
   // Handle time update
   const handleTimeUpdate = () => {
@@ -136,14 +147,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setCurrentTime(vid.currentTime);
     if (vid.duration && !isNaN(vid.duration)) {
       setDuration(vid.duration);
-    }
-
-    if (video.settings.resumePlayback) {
-      try {
-        localStorage.setItem(`veloturb_time_${video.id}`, vid.currentTime.toString());
-      } catch (e) {
-        // ignore storage errors
-      }
     }
 
     // Check pitch delay trigger
@@ -158,22 +161,32 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleUnmuteClick = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+
+    // Se estiver em modo Bunny Embed Fallback, usa postMessage para desmutar e reiniciar
+    if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+      } catch (err) {}
+      setIsMuted(false);
+      setShowAutoplayBanner(false);
+      setIsPlaying(true);
+      return;
+    }
+
     const vid = videoRef.current;
     if (!vid) return;
 
-    // Smart Autoplay hook: Restart from beginning (00:00) with audio enabled!
+    // Smart Autoplay hook: Reinicia do começo (00:00) com áudio!
     vid.currentTime = 0;
     vid.muted = false;
     setIsMuted(false);
     setShowAutoplayBanner(false);
-    const playPromise = vid.play();
-    if (playPromise !== undefined) {
-      playPromise.then(() => setIsPlaying(true)).catch(() => {});
-    }
+    vid.play().then(() => setIsPlaying(true)).catch(() => {});
   };
 
   const handleVideoClick = () => {
-    // If the video is running muted in Smart Autoplay teaser mode, clicking anywhere unmutes & restarts from 0
     if (isMuted || showAutoplayBanner) {
       handleUnmuteClick();
       return;
@@ -182,6 +195,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const togglePlay = () => {
+    if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
+      if (isPlaying) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'pause' }), '*');
+        setIsPlaying(false);
+      } else {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     const vid = videoRef.current;
     if (!vid) return;
 
@@ -225,7 +249,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Progress percentage calculation (supports fake progress bar!)
+  // Progress percentage calculation
   const actualPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const progressPercent = video.settings.fakeProgressBar
     ? Math.min(100, Math.pow(actualPercent / 100, 0.55) * 100)
@@ -267,24 +291,35 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Video Element */}
-      <video
-        ref={videoRef}
-        poster={video.thumbnailUrl}
-        playsInline
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={(e) => {
-          const d = (e.target as HTMLVideoElement).duration;
-          if (d && !isNaN(d)) setDuration(d);
-        }}
-        onDurationChange={(e) => {
-          const d = (e.target as HTMLVideoElement).duration;
-          if (d && !isNaN(d)) setDuration(d);
-        }}
-        onEnded={() => setIsPlaying(false)}
-        onClick={handleVideoClick}
-        className="w-full h-full object-contain cursor-pointer bg-black"
-      />
+      {/* Video Element OR Bunny Embed Fallback */}
+      {useBunnyEmbedFallback ? (
+        <iframe
+          ref={iframeRef}
+          src={`https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}?autoplay=true&loop=false&muted=true&preload=true&responsive=true`}
+          title={video.title}
+          className="w-full h-full border-0 absolute inset-0 bg-black"
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          allowFullScreen
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          poster={video.thumbnailUrl}
+          playsInline
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={(e) => {
+            const d = (e.target as HTMLVideoElement).duration;
+            if (d && !isNaN(d)) setDuration(d);
+          }}
+          onDurationChange={(e) => {
+            const d = (e.target as HTMLVideoElement).duration;
+            if (d && !isNaN(d)) setDuration(d);
+          }}
+          onEnded={() => setIsPlaying(false)}
+          onClick={handleVideoClick}
+          className="w-full h-full object-contain cursor-pointer bg-black"
+        />
+      )}
 
       {/* Watermark Protection if enabled */}
       {video.settings.showWatermark && (
@@ -316,8 +351,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         )
       )}
 
-      {/* Standard Bottom Controls Bar - HIDDEN in Professional VSL Mode! */}
-      {!isProfessionalVSL && (
+      {/* Standard Bottom Controls Bar */}
+      {!isProfessionalVSL && !useBunnyEmbedFallback && (
         <div
           className={`absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-8 pb-2 px-4 transition-opacity duration-200 ${
             showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'

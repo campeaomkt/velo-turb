@@ -14,8 +14,8 @@ export interface NormalizedVideoUrlResult {
   error?: string;
 }
 
-// Hostname padrão configurável (pode vir de env ou ser customizado pelo produtor)
-export const DEFAULT_BUNNY_CDN_HOSTNAME = 'vz-802485-cdn.b-cdn.net';
+// Hostname padrão configurável oficial da conta do usuário (Library 802485)
+export const DEFAULT_BUNNY_CDN_HOSTNAME = 'vz-de50afce-82d.b-cdn.net';
 
 /**
  * Função única e reutilizável de detecção e conversão de URLs de vídeo.
