@@ -38,6 +38,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Resume Playback (Continuar assistindo) State
   const [showResumePrompt, setShowResumePrompt] = useState(forceShowResumePrompt);
   const [savedSeconds, setSavedSeconds] = useState(145); // default preview 2m25s
+  const showResumePromptRef = useRef(forceShowResumePrompt);
+  showResumePromptRef.current = showResumePrompt;
 
   const primaryColor = video.settings.primaryColor || '#E11D48';
 
@@ -87,174 +89,178 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
-
     const startAutoplayIfNeeded = () => {
-      // Don't autoplay if resume prompt is active
-      if (showResumePrompt) return;
+    // Don't autoplay if resume prompt is active
+    if (showResumePromptRef.current) return;
 
-      if (video.settings.smartAutoplay) {
+    if (video.settings.smartAutoplay) {
+      const vid = videoRef.current;
+      if (vid) {
         vid.muted = true;
         setIsMuted(true);
         setShowAutoplayBanner(true);
         vid.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       }
-    };
+    }
+  };
 
-    if (isHlsUrl && video.videoUrl) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          startLevel: -1,
-          capLevelToPlayerSize: true,
-          maxBufferLength: 30,
-          enableWorker: true,
-        });
-        hlsRef.current = hls;
+  if (isHlsUrl && video.videoUrl) {
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        startLevel: -1,
+        capLevelToPlayerSize: true,
+        maxBufferLength: 30,
+        enableWorker: true,
+      });
+      hlsRef.current = hls;
 
-        hls.loadSource(video.videoUrl);
-        hls.attachMedia(vid);
+      hls.loadSource(video.videoUrl);
+      hls.attachMedia(vid);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          startAutoplayIfNeeded();
-        });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        startAutoplayIfNeeded();
+      });
 
-        hls.on(Hls.Events.LEVEL_LOADED, (_event, data) => {
-          if (data?.details?.totalduration && !isNaN(data.details.totalduration)) {
-            setDuration(data.details.totalduration);
-          }
-        });
+      hls.on(Hls.Events.LEVEL_LOADED, (_event, data) => {
+        if (data?.details?.totalduration && !isNaN(data.details.totalduration)) {
+          setDuration(data.details.totalduration);
+        }
+      });
 
-        hls.on(Hls.Events.ERROR, (_event, data) => {
-          console.warn('[VeloTurb HLS Status]', data);
-          if (data.fatal) {
-            if (isBunny) {
-              setUseBunnyEmbedFallback(true);
-              setIsPlaying(true);
-            } else {
-              switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                  hls.startLoad();
-                  break;
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                  hls.recoverMediaError();
-                  break;
-                default:
-                  hls.destroy();
-                  break;
-              }
-            }
-          }
-        });
-      } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-        vid.src = video.videoUrl;
-        vid.addEventListener('loadedmetadata', () => {
-          startAutoplayIfNeeded();
-        }, { once: true });
-        vid.addEventListener('error', () => {
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        console.warn('[VeloTurb HLS Status]', data);
+        if (data.fatal) {
           if (isBunny) {
             setUseBunnyEmbedFallback(true);
             setIsPlaying(true);
+          } else {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
           }
-        });
-      }
-    } else if (video.videoUrl) {
+        }
+      });
+    } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
       vid.src = video.videoUrl;
-      startAutoplayIfNeeded();
+      vid.addEventListener('loadedmetadata', () => {
+        startAutoplayIfNeeded();
+      }, { once: true });
+      vid.addEventListener('error', () => {
+        if (isBunny) {
+          setUseBunnyEmbedFallback(true);
+          setIsPlaying(true);
+        }
+      });
     }
+  } else if (video.videoUrl) {
+    vid.src = video.videoUrl;
+    startAutoplayIfNeeded();
+  }
 
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, [video.id, video.videoUrl, isHlsUrl, useBunnyEmbedFallback, isBunny, video.settings.smartAutoplay, showResumePrompt]);
-
-  // Handle time update and save progress to localStorage
-  const handleTimeUpdate = () => {
-    const vid = videoRef.current;
-    if (!vid) return;
-
-    setCurrentTime(vid.currentTime);
-    if (vid.duration && !isNaN(vid.duration)) {
-      setDuration(vid.duration);
-    }
-
-    // Persist position for resume playback
-    if (video.settings.resumePlayback && vid.currentTime > 3) {
-      try {
-        localStorage.setItem(`veloturb_time_${video.id}`, vid.currentTime.toString());
-      } catch (e) {}
-    }
-
-    // Check pitch delay trigger
-    const pitchSeconds = video.settings.pitchDelaySeconds || 0;
-    if (pitchSeconds > 0 && vid.currentTime >= pitchSeconds && !pitchTriggered) {
-      setPitchTriggered(true);
-      if (onPitchReached) {
-        onPitchReached();
-      }
+  return () => {
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
     }
   };
+}, [video.id, video.videoUrl, isHlsUrl, useBunnyEmbedFallback, isBunny, video.settings.smartAutoplay]);
 
-  // Actions for Resume Playback Overlay
-  const handleResumeContinue = () => {
-    setShowResumePrompt(false);
-    setShowAutoplayBanner(false);
+// Handle time update and save progress to localStorage
+const handleTimeUpdate = () => {
+  const vid = videoRef.current;
+  if (!vid) return;
 
-    if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
-      try {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: savedSeconds }), '*');
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
-      } catch (e) {}
-      setIsMuted(false);
-      setIsPlaying(true);
-      return;
-    }
+  setCurrentTime(vid.currentTime);
+  if (vid.duration && !isNaN(vid.duration)) {
+    setDuration(vid.duration);
+  }
 
-    const vid = videoRef.current;
-    if (!vid) return;
-
-    vid.currentTime = savedSeconds;
-    vid.muted = false;
-    setIsMuted(false);
-    vid.play().then(() => setIsPlaying(true)).catch(() => {});
-
-    // Check pitch trigger if saved time is past pitch
-    const pitchSeconds = video.settings.pitchDelaySeconds || 0;
-    if (pitchSeconds > 0 && savedSeconds >= pitchSeconds && !pitchTriggered) {
-      setPitchTriggered(true);
-      if (onPitchReached) onPitchReached();
-    }
-  };
-
-  const handleResumeRestart = () => {
-    setShowResumePrompt(false);
-    setShowAutoplayBanner(false);
-
+  // Persist position for resume playback
+  if (video.settings.resumePlayback && vid.currentTime > 3) {
     try {
-      localStorage.removeItem(`veloturb_time_${video.id}`);
+      localStorage.setItem(`veloturb_time_${video.id}`, vid.currentTime.toString());
     } catch (e) {}
+  }
 
-    if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
-      try {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
-      } catch (e) {}
-      setIsMuted(false);
-      setIsPlaying(true);
-      return;
+  // Check pitch delay trigger
+  const pitchSeconds = video.settings.pitchDelaySeconds || 0;
+  if (pitchSeconds > 0 && vid.currentTime >= pitchSeconds && !pitchTriggered) {
+    setPitchTriggered(true);
+    if (onPitchReached) {
+      onPitchReached();
     }
+  }
+};
 
-    const vid = videoRef.current;
-    if (!vid) return;
+// Actions for Resume Playback Overlay
+const handleResumeContinue = () => {
+  setShowResumePrompt(false);
+  showResumePromptRef.current = false;
+  setShowAutoplayBanner(false);
 
-    vid.currentTime = 0;
-    vid.muted = false;
+  if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
+    try {
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: savedSeconds }), '*');
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+    } catch (e) {}
     setIsMuted(false);
-    vid.play().then(() => setIsPlaying(true)).catch(() => {});
-  };
+    setIsPlaying(true);
+    return;
+  }
+
+  const vid = videoRef.current;
+  if (!vid) return;
+
+  vid.currentTime = savedSeconds;
+  vid.muted = false;
+  setIsMuted(false);
+  vid.play().then(() => setIsPlaying(true)).catch(() => {});
+
+  // Check pitch trigger if saved time is past pitch
+  const pitchSeconds = video.settings.pitchDelaySeconds || 0;
+  if (pitchSeconds > 0 && savedSeconds >= pitchSeconds && !pitchTriggered) {
+    setPitchTriggered(true);
+    if (onPitchReached) onPitchReached();
+  }
+};
+
+const handleResumeRestart = () => {
+  setShowResumePrompt(false);
+  showResumePromptRef.current = false;
+  setShowAutoplayBanner(false);
+
+  try {
+    localStorage.removeItem(`veloturb_time_${video.id}`);
+  } catch (e) {}
+
+  if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
+    try {
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'unmute' }), '*');
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+    } catch (e) {}
+    setIsMuted(false);
+    setIsPlaying(true);
+    return;
+  }
+
+  const vid = videoRef.current;
+  if (!vid) return;
+
+  vid.currentTime = 0;
+  vid.muted = false;
+  setIsMuted(false);
+  vid.play().then(() => setIsPlaying(true)).catch(() => {});
+};
 
   const handleUnmuteClick = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -284,7 +290,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleVideoClick = () => {
     if (showResumePrompt) return;
-    if (isMuted || showAutoplayBanner) {
+    if (showAutoplayBanner) {
       handleUnmuteClick();
       return;
     }
@@ -294,10 +300,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const togglePlay = () => {
     if (useBunnyEmbedFallback && iframeRef.current?.contentWindow) {
       if (isPlaying) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'pause' }), '*');
+        try {
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'pause' }), '*');
+        } catch (e) {}
         setIsPlaying(false);
       } else {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+        try {
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+        } catch (e) {}
         setIsPlaying(true);
       }
       return;
@@ -403,14 +413,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Video Element OR Bunny Embed Fallback */}
       {useBunnyEmbedFallback ? (
-        <iframe
-          ref={iframeRef}
-          src={`https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}?autoplay=true&loop=false&muted=true&preload=true&responsive=true`}
-          title={video.title}
-          className="w-full h-full border-0 absolute inset-0 bg-black"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-          allowFullScreen
-        />
+        <div className="relative w-full h-full">
+          <iframe
+            ref={iframeRef}
+            src={`https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}?autoplay=true&loop=false&muted=true&preload=true&responsive=true`}
+            title={video.title}
+            className="w-full h-full border-0 absolute inset-0 bg-black pointer-events-none"
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+            allowFullScreen
+          />
+          {/* Overlay de clique para pausar/retomar no modo Iframe Bunny */}
+          <div
+            onClick={handleVideoClick}
+            className="absolute inset-0 z-10 cursor-pointer"
+          />
+        </div>
       ) : (
         <video
           ref={videoRef}

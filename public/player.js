@@ -240,12 +240,15 @@
           'oncontextmenu="return false;">' +
         '</video>' +
 
-        // Iframe Fallback
+        // Iframe Fallback (pointer-events:none para permitir clique no player)
         '<iframe id="' + instanceId + '-iframe" ' +
           'src="https://iframe.mediadelivery.net/embed/' + libraryId + '/' + videoId + '?autoplay=' + (shouldShowResumePrompt ? 'false' : 'true') + '&loop=false&muted=true&preload=true&responsive=true" ' +
-          'style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;border:0;background:#000;" ' +
+          'style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;border:0;background:#000;pointer-events:none;" ' +
           'allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen>' +
         '</iframe>' +
+
+        // Camada transparente interceptadora de cliques no vídeo e iframe
+        '<div id="' + instanceId + '-click-capture" style="position:absolute;inset:0;z-index:20;cursor:pointer;"></div>' +
 
         // ThumbSniper Overlay
         '<div id="' + instanceId + '-thumbsniper" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:45;align-items:center;justify-content:center;padding:15px;cursor:pointer;text-align:center;">' +
@@ -277,6 +280,7 @@
 
     var video = document.getElementById(instanceId + '-video');
     var iframe = document.getElementById(instanceId + '-iframe');
+    var clickCapture = document.getElementById(instanceId + '-click-capture');
     var unmuteBtn = document.getElementById(instanceId + '-unmute');
     var resumeBox = document.getElementById(instanceId + '-resume');
     var btnContinue = document.getElementById(instanceId + '-btn-continue');
@@ -405,7 +409,10 @@
     if (btnContinue) {
       btnContinue.onclick = function(e) {
         e.stopPropagation();
+        shouldShowResumePrompt = false; // CRÍTICO: Desbloqueia cliques e permite pausar
         if (resumeBox) resumeBox.style.display = 'none';
+        if (unmuteBtn) unmuteBtn.style.display = 'none';
+        if (thumbsniper) thumbsniper.style.display = 'none';
         isPlaying = true;
 
         if (isIframeMode && iframe && iframe.contentWindow) {
@@ -431,7 +438,10 @@
     if (btnRestart) {
       btnRestart.onclick = function(e) {
         e.stopPropagation();
+        shouldShowResumePrompt = false; // CRÍTICO: Desbloqueia cliques e permite pausar
         if (resumeBox) resumeBox.style.display = 'none';
+        if (unmuteBtn) unmuteBtn.style.display = 'none';
+        if (thumbsniper) thumbsniper.style.display = 'none';
         try { localStorage.removeItem(storageKey); } catch (err) {}
         isPlaying = true;
 
@@ -475,6 +485,9 @@
     // Unmute Action: Reinicia do 00:00 com áudio ativado
     function activateAudioAndRestart() {
       if (shouldShowResumePrompt) return;
+      isPlaying = true;
+      if (unmuteBtn) unmuteBtn.style.display = 'none';
+      if (thumbsniper) thumbsniper.style.display = 'none';
 
       if (isIframeMode && iframe && iframe.contentWindow) {
         try {
@@ -483,8 +496,6 @@
           iframe.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
         } catch (e) {}
         currentPlaybackSeconds = 0;
-        isPlaying = true;
-        if (unmuteBtn) unmuteBtn.style.display = 'none';
         return;
       }
 
@@ -493,7 +504,6 @@
         video.muted = false;
         video.volume = 1;
         video.play();
-        if (unmuteBtn) unmuteBtn.style.display = 'none';
       } catch (err) {}
     }
 
@@ -504,29 +514,75 @@
       };
     }
 
-    video.onclick = function() {
+    // Handler universal de clique no vídeo (funciona no nativo e no Bunny Iframe)
+    function handleMediaClick(e) {
+      if (e && e.stopPropagation) e.stopPropagation();
       if (shouldShowResumePrompt) return;
-      if (video.muted || (unmuteBtn && unmuteBtn.style.display !== 'none')) {
+
+      // Se o banner de áudio ainda está aberto, o clique inicial ativa o áudio
+      if (unmuteBtn && unmuteBtn.style.display !== 'none') {
         activateAudioAndRestart();
-      } else if (video.paused) {
-        video.play();
-      } else {
-        video.pause();
+        return;
       }
-    };
+
+      // Alternar Play / Pause
+      if (isPlaying) {
+        // Pausar
+        if (isIframeMode && iframe && iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'pause' }), '*');
+          } catch (err) {}
+        } else if (video) {
+          video.pause();
+        }
+        isPlaying = false;
+        if (thumbsniper) {
+          thumbsniper.style.display = 'flex';
+        }
+      } else {
+        // Retomar Play
+        if (isIframeMode && iframe && iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+          } catch (err) {}
+        } else if (video) {
+          video.play();
+        }
+        isPlaying = true;
+        if (thumbsniper) {
+          thumbsniper.style.display = 'none';
+        }
+      }
+    }
+
+    if (clickCapture) {
+      clickCapture.onclick = handleMediaClick;
+    }
+    if (video) {
+      video.onclick = handleMediaClick;
+    }
 
     if (thumbsniper) {
       video.addEventListener('pause', function() {
+        isPlaying = false;
         if (!shouldShowResumePrompt && !video.ended && video.currentTime > 0.5) {
           thumbsniper.style.display = 'flex';
         }
       });
       video.addEventListener('play', function() {
+        isPlaying = true;
         thumbsniper.style.display = 'none';
       });
       thumbsniper.onclick = function(e) {
         e.stopPropagation();
-        video.play();
+        if (isIframeMode && iframe && iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'play' }), '*');
+          } catch (err) {}
+        } else if (video) {
+          video.play();
+        }
+        isPlaying = true;
         thumbsniper.style.display = 'none';
       };
     }
