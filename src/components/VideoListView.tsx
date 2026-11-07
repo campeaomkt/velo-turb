@@ -20,6 +20,7 @@ import {
   Flame,
   ArrowRight,
   Filter,
+  Crosshair,
 } from 'lucide-react';
 import { VideoItem, Folder } from '../types';
 import { formatTime } from '../utils/embedGenerator';
@@ -35,6 +36,7 @@ interface VideoListViewProps {
   onOpenSimulator: (video: VideoItem) => void;
   onOpenEdit: (video: VideoItem) => void;
   onOpenAnalytics: (video: VideoItem) => void;
+  onOpenThumbSniper: (video: VideoItem) => void;
   onDeleteVideo: (videoId: string) => void;
   onRestoreVideo: (videoId: string) => void;
 }
@@ -50,6 +52,7 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
   onOpenSimulator,
   onOpenEdit,
   onOpenAnalytics,
+  onOpenThumbSniper,
   onDeleteVideo,
   onRestoreVideo,
 }) => {
@@ -369,6 +372,20 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                 >
                   <Settings className="w-4 h-4" />
                 </button>
+
+                {/* ThumbSniper Button */}
+                <div className="relative group/tsbtn">
+                  <button
+                    onClick={() => onOpenThumbSniper(video)}
+                    className="p-2 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 text-rose-600 transition-colors cursor-pointer"
+                  >
+                    <Crosshair className="w-4 h-4 text-rose-600" />
+                  </button>
+                  <div className="absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 group-hover/tsbtn:opacity-100 pointer-events-none transition-opacity bg-neutral-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded-md whitespace-nowrap shadow-md z-30">
+                    ThumbSniper™
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-800"></div>
+                  </div>
+                </div>
 
                 {/* Trash/Delete */}
                 {video.isTrash ? (

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Settings, Play, Sparkles, Shield, Clock, Palette, Check, Eye, X, Volume2, Link as LinkIcon, RotateCcw } from 'lucide-react';
-import { VideoItem, PlayerSettings, Folder } from '../types';
+import { Settings, Play, Sparkles, Shield, Clock, Palette, Check, Eye, X, Volume2, Link as LinkIcon, RotateCcw, Crosshair, Upload } from 'lucide-react';
+import { VideoItem, PlayerSettings, Folder, ThumbSniperSettings } from '../types';
 import { VideoPlayer } from './VideoPlayer';
 import { formatTime } from '../utils/embedGenerator';
+import { ThumbSniperModal } from './ThumbSniperModal';
+import { THUMB_SNIPER_TEMPLATES } from '../data/thumbSniperTemplates';
 
 interface VideoEditModalProps {
   video: VideoItem;
@@ -22,7 +24,8 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
   onOpenEmbed,
 }) => {
   const [formData, setFormData] = useState<VideoItem>({ ...video });
-  const [activeTab, setActiveTab] = useState<'conversion' | 'design' | 'security' | 'cta'>('conversion');
+  const [activeTab, setActiveTab] = useState<'conversion' | 'design' | 'thumbsniper' | 'cta' | 'security'>('conversion');
+  const [showThumbSniperModal, setShowThumbSniperModal] = useState(false);
   const [pitchMinutes, setPitchMinutes] = useState(Math.floor((video.settings.pitchDelaySeconds || 0) / 60));
   const [pitchSeconds, setPitchSeconds] = useState((video.settings.pitchDelaySeconds || 0) % 60);
 
@@ -130,18 +133,28 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
             </div>
 
             {/* Config Sub-Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-200 pb-2">
+            <div className="flex items-center gap-1 border-b border-slate-200 pb-2 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('conversion')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'conversion' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" /> Conversão & Pitch
               </button>
               <button
+                onClick={() => setActiveTab('thumbsniper')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
+                  activeTab === 'thumbsniper' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Crosshair className="w-3.5 h-3.5 text-rose-300" />
+                <span>ThumbSniper™</span>
+                <span className="text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black">NOVO</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('design')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'design' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -149,7 +162,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               </button>
               <button
                 onClick={() => setActiveTab('cta')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'cta' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -157,7 +170,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               </button>
               <button
                 onClick={() => setActiveTab('security')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'security' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -311,6 +324,169 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                       className="w-5 h-5 accent-rose-600 rounded cursor-pointer"
                     />
                   </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB CONTENT: ThumbSniper™ (matching image_5ab05cef.png, image_217ed8ff.png, image_f3ee47eb.png, image_3d394116.png) */}
+            {activeTab === 'thumbsniper' && (
+              <div className="space-y-4">
+                
+                {/* Status & Toggle Header */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full border-2 border-rose-500 flex items-center justify-center text-rose-500 bg-rose-50">
+                        <Crosshair className="w-4 h-4 text-rose-500" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          ThumbSniper™
+                          <span className="text-[10px] text-slate-500 font-normal">Pausa com Gatilho e Mãozinha Animada</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Exibe aviso animado estilo GIF com gatilho de urgência ao pausar o vídeo.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Toggle button on/off matching screenshot image_217ed8ff.png */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = formData.settings.thumbSniper?.enabled ?? true;
+                        updateSetting('thumbSniper', {
+                          ...(formData.settings.thumbSniper || {
+                            name: 'ThumbSniper Principal',
+                            type: 'template',
+                            templateId: 'ts_01',
+                          }),
+                          enabled: !current,
+                        });
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        (formData.settings.thumbSniper?.enabled ?? true)
+                          ? 'bg-emerald-500 text-white shadow-xs'
+                          : 'bg-rose-500 text-white shadow-xs'
+                      }`}
+                    >
+                      {(formData.settings.thumbSniper?.enabled ?? true) ? 'on' : 'off'}
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setShowThumbSniperModal(true)}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Crosshair className="w-3.5 h-3.5" />
+                      <span>Abrir Editor Completo do ThumbSniper™</span>
+                    </button>
+                    <span className="text-[11px] text-slate-500">
+                      Template atual: <strong className="text-slate-800">{formData.settings.thumbSniper?.templateId || 'ts_01'}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Templates Quick Chooser (with moving hand indicator) */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-bold text-slate-900">Templates Prontos de Alta Conversão</h5>
+                    <span className="text-[10px] text-slate-500 font-mono">8 templates disponíveis</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {THUMB_SNIPER_TEMPLATES.map((tmpl) => {
+                      const isSelected = (formData.settings.thumbSniper?.templateId || 'ts_01') === tmpl.id;
+                      const isYellow = tmpl.theme === 'yellow-alert';
+
+                      return (
+                        <div
+                          key={tmpl.id}
+                          onClick={() => {
+                            updateSetting('thumbSniper', {
+                              enabled: true,
+                              name: tmpl.name,
+                              type: 'template',
+                              templateId: tmpl.id,
+                              headline: tmpl.headline,
+                              subheadline: tmpl.subheadline,
+                              buttonText: tmpl.buttonText,
+                              buttonColor: tmpl.buttonColor,
+                            });
+                          }}
+                          className={`relative rounded-xl p-2.5 border cursor-pointer transition-all flex flex-col justify-between min-h-[120px] select-none text-center ${
+                            isSelected
+                              ? 'border-blue-600 ring-2 ring-blue-500/30 scale-[1.02] shadow-sm'
+                              : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
+                          } ${
+                            isYellow
+                              ? 'bg-amber-400 text-slate-950'
+                              : tmpl.theme === 'navy-red'
+                              ? 'bg-slate-900 text-white'
+                              : 'bg-zinc-950 text-white'
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+
+                          <div className="text-[10px] font-bold line-clamp-1">
+                            {tmpl.badgeTitle || (tmpl.iconType === 'stop' ? '✋' : '⚠️')}
+                          </div>
+
+                          <p className="text-[10px] font-bold leading-tight line-clamp-2 my-1">
+                            {tmpl.headline}
+                          </p>
+
+                          <div className="relative pt-1">
+                            <div
+                              style={{ backgroundColor: tmpl.buttonColor }}
+                              className={`py-1 px-1.5 rounded text-[9px] font-black uppercase truncate ${
+                                tmpl.buttonColor === '#FACC15' ? 'text-slate-950' : 'text-white'
+                              }`}
+                            >
+                              {tmpl.buttonText}
+                            </div>
+                            <div className="absolute -bottom-1 right-1 text-sm pointer-events-none animate-thumb-tap">
+                              👆
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom GIF / Image Section */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <h5 className="text-xs font-bold text-slate-900">Ou use seu próprio GIF animado / imagem</h5>
+                  <p className="text-[11px] text-slate-500">
+                    Se você já tem uma animação personalizada de pausa, cole a URL abaixo:
+                  </p>
+                  <input
+                    type="url"
+                    value={formData.settings.thumbSniper?.customMediaUrl || ''}
+                    onChange={(e) => {
+                      updateSetting('thumbSniper', {
+                        ...(formData.settings.thumbSniper || {
+                          enabled: true,
+                          name: 'Custom ThumbSniper',
+                          type: 'custom',
+                          templateId: 'ts_01',
+                        }),
+                        type: 'custom',
+                        templateId: formData.settings.thumbSniper?.templateId || 'ts_01',
+                        customMediaUrl: e.target.value,
+                      });
+                    }}
+                    placeholder="https://exemplo.com/meu-gif-animado.gif"
+                    className="w-full px-3 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white"
+                  />
                 </div>
 
               </div>
@@ -551,6 +727,19 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
         </div>
 
       </div>
+
+      {/* ThumbSniper Dedicated Modal (matching image_217ed8ff.png, image_f3ee47eb.png, image_3d394116.png) */}
+      {showThumbSniperModal && (
+        <ThumbSniperModal
+          isOpen={showThumbSniperModal}
+          settings={formData.settings.thumbSniper}
+          onClose={() => setShowThumbSniperModal(false)}
+          onSave={(newSniperSettings) => {
+            updateSetting('thumbSniper', newSniperSettings);
+            setShowThumbSniperModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

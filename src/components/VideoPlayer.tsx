@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, FastForward, RotateCcw, ShieldCheck } from 'lucide-react';
 import { VideoItem } from '../types';
+import { ThumbSniperOverlay } from './ThumbSniperOverlay';
 
 interface VideoPlayerProps {
   video: VideoItem;
@@ -214,19 +215,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Center Play Overlay when paused (only if not running in smart autoplay teaser) */}
+      {/* Center Play Overlay OR ThumbSniper Overlay when paused */}
       {!isPlaying && !showAutoplayBanner && (
-        <div
-          onClick={handleVideoClick}
-          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 cursor-pointer backdrop-blur-[2px] transition-opacity"
-        >
+        (video.settings.thumbSniper?.enabled ?? true) ? (
+          <ThumbSniperOverlay
+            settings={video.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }}
+            onResume={handleVideoClick}
+          />
+        ) : (
           <div
-            style={{ backgroundColor: primaryColor }}
-            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white shadow-2xl transition-transform hover:scale-110 active:scale-95"
+            onClick={handleVideoClick}
+            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 cursor-pointer backdrop-blur-[2px] transition-opacity"
           >
-            <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
+            <div
+              style={{ backgroundColor: primaryColor }}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white shadow-2xl transition-transform hover:scale-110 active:scale-95"
+            >
+              <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Standard Bottom Controls Bar - HIDDEN in Professional VSL Mode! */}

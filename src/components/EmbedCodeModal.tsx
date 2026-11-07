@@ -46,20 +46,44 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
       oncontextmenu="return false;"
     ></video>
 
+    <!-- ThumbSniper Pause Hook Overlay (Aparece ao Pausar o Vídeo com Mãozinha Animada) -->
+    <div id="veloturb-thumbsniper-${video.id}" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 45; align-items: center; justify-content: center; padding: 15px; cursor: pointer; text-align: center; font-family: system-ui, sans-serif;">
+      <div style="background: #09090b; border: 1px solid #27272a; border-radius: 14px; padding: 22px 18px; max-width: 360px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+        <div style="font-size: 28px; margin-bottom: 8px;">✋</div>
+        <h4 style="color: #fff; font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px 0; line-height: 1.2;">Este vídeo ficará fora do ar em breve!</h4>
+        <p style="color: #a1a1aa; font-size: 12px; margin: 0 0 16px 0;">Essa é sua última chance de assistir até o final.</p>
+        <div style="position: relative; display: inline-block; width: 100%;">
+          <button style="width: 100%; background: #ef4444; color: #fff; font-weight: 800; font-size: 13px; text-transform: uppercase; padding: 12px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(239,68,68,0.5);">CONTINUAR ASSISTINDO</button>
+          <div style="position: absolute; bottom: -8px; right: 20px; font-size: 28px; animation: veloturbTap 1.2s infinite ease-in-out; pointer-events: none;">👆</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Barra de Progresso VSL Profissional -->
     <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.25); z-index: 30;">
       <div id="veloturb-bar-${video.id}" style="height: 100%; width: 0%; background: ${primaryColor}; transition: width 0.15s linear;"></div>
     </div>
   </div>
-</veloturb-smartplayer>
+</div>
+
+<style>
+@keyframes veloturbTap {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-8px) scale(1.1); }
+  50% { transform: translateY(2px) scale(0.92); }
+  70% { transform: translateY(-4px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); }
+}
+</style>
 
 <script type="text/javascript">
 (function() {
   var v = document.getElementById('veloturb-vid-${video.id}');
   var b = document.getElementById('veloturb-unmute-${video.id}');
   var bar = document.getElementById('veloturb-bar-${video.id}');
+  var ts = document.getElementById('veloturb-thumbsniper-${video.id}');
 
-  // Ao clicar na isca ou no vídeo, reinicia DO COMEÇO (00:00) com SOM ATIVADO!
+  // Ao clicar na isca de áudio ou no vídeo, reinicia DO COMEÇO (00:00) com SOM ATIVADO!
   function unmuteAndRestartFromZero() {
     try {
       v.currentTime = 0;
@@ -71,7 +95,32 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   }
 
   if (b) b.onclick = function(e) { e.stopPropagation(); unmuteAndRestartFromZero(); };
-  v.onclick = function() { if (v.muted || (b && b.style.display !== 'none')) unmuteAndRestartFromZero(); };
+  v.onclick = function() {
+    if (v.muted || (b && b.style.display !== 'none')) {
+      unmuteAndRestartFromZero();
+    } else if (v.paused) {
+      v.play();
+    } else {
+      v.pause();
+    }
+  };
+
+  // ThumbSniper Trigger: Ao pausar, mostra o aviso animado com a mãozinha!
+  if (ts) {
+    v.addEventListener('pause', function() {
+      if (!v.ended && v.currentTime > 1) {
+        ts.style.display = 'flex';
+      }
+    });
+    v.addEventListener('play', function() {
+      ts.style.display = 'none';
+    });
+    ts.onclick = function(e) {
+      e.stopPropagation();
+      v.play();
+      ts.style.display = 'none';
+    };
+  }
 
   v.addEventListener('timeupdate', function() {
     if (bar && v.duration) {

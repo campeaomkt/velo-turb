@@ -19,6 +19,7 @@ import { SalesPageSimulatorModal } from './components/SalesPageSimulatorModal';
 import { VideoEditModal } from './components/VideoEditModal';
 import { AnalyticsModal } from './components/AnalyticsModal';
 import { UploadVideoModal } from './components/UploadVideoModal';
+import { ThumbSniperModal } from './components/ThumbSniperModal';
 import { INITIAL_VIDEOS, INITIAL_FOLDERS, INITIAL_AB_TESTS } from './data/mockVideos';
 import { VideoItem, Folder, ABTest, ActiveTab } from './types';
 
@@ -34,6 +35,7 @@ export default function App() {
   const [selectedSimulatorVideo, setSelectedSimulatorVideo] = useState<VideoItem | null>(null);
   const [selectedEditVideo, setSelectedEditVideo] = useState<VideoItem | null>(null);
   const [selectedAnalyticsVideo, setSelectedAnalyticsVideo] = useState<VideoItem | null>(null);
+  const [selectedThumbSniperVideo, setSelectedThumbSniperVideo] = useState<VideoItem | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Computations
@@ -108,6 +110,7 @@ export default function App() {
               onOpenSimulator={(video) => setSelectedSimulatorVideo(video)}
               onOpenEdit={(video) => setSelectedEditVideo(video)}
               onOpenAnalytics={(video) => setSelectedAnalyticsVideo(video)}
+              onOpenThumbSniper={(video) => setSelectedThumbSniperVideo(video)}
               onDeleteVideo={handleDeleteVideo}
               onRestoreVideo={handleRestoreVideo}
             />
@@ -203,6 +206,25 @@ export default function App() {
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
           onUploadSuccess={handleUploadSuccess}
+        />
+      )}
+
+      {/* MODAL 6: ThumbSniper Configurator */}
+      {selectedThumbSniperVideo && (
+        <ThumbSniperModal
+          isOpen={!!selectedThumbSniperVideo}
+          settings={selectedThumbSniperVideo.settings.thumbSniper}
+          onClose={() => setSelectedThumbSniperVideo(null)}
+          onSave={(newSniperSettings) => {
+            handleUpdateVideo({
+              ...selectedThumbSniperVideo,
+              settings: {
+                ...selectedThumbSniperVideo.settings,
+                thumbSniper: newSniperSettings,
+              },
+            });
+            setSelectedThumbSniperVideo(null);
+          }}
         />
       )}
 

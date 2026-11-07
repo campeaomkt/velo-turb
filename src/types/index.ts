@@ -18,6 +18,19 @@ export interface PlayerSettings {
   ctaSubtext: string;
   ctaUrl: string;
   showWatermark: boolean;
+  thumbSniper?: ThumbSniperSettings;
+}
+
+export interface ThumbSniperSettings {
+  enabled: boolean;
+  name?: string;
+  type: 'template' | 'custom';
+  templateId?: string;
+  customMediaUrl?: string; // custom GIF or image
+  headline?: string;
+  subheadline?: string;
+  buttonText?: string;
+  buttonColor?: string;
 }
 
 export interface VideoItem {
