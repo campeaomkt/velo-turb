@@ -5,6 +5,9 @@ import {
   Upload,
   Search,
   Code,
+  Code2,
+  PieChart,
+  MoreVertical,
   Eye,
   Settings,
   BarChart3,
@@ -314,23 +317,46 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
 
               </div>
 
-              {/* Right: Actions */}
-              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+              {/* Right: Actions matching VTurb */}
+              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
                 
-                {/* PRIMARY ACTION: "Obter Código da PV" */}
+                {/* PRIMARY ACTION: "Copiar código embed" */}
                 <button
                   onClick={() => onOpenEmbed(video)}
                   className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-600/20 transition-transform active:scale-95 cursor-pointer"
                 >
-                  <Code className="w-4 h-4" />
-                  <span>Obter Código da PV</span>
+                  <Code2 className="w-4 h-4" />
+                  <span>Copiar código embed</span>
                 </button>
+
+                {/* Pie Chart / Analytics (matching image_096629c1.png) */}
+                <button
+                  onClick={() => onOpenAnalytics(video)}
+                  title="Métricas de Retenção & Conversão"
+                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  <PieChart className="w-4 h-4" />
+                </button>
+
+                {/* </> Icon button with VTurb tooltip (matching image_096629c1.png) */}
+                <div className="relative group/embedbtn">
+                  <button
+                    onClick={() => onOpenEmbed(video)}
+                    className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
+                  >
+                    <Code className="w-4 h-4" />
+                  </button>
+                  <div className="absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 group-hover/embedbtn:opacity-100 pointer-events-none transition-opacity bg-neutral-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded-md whitespace-nowrap shadow-md z-30">
+                    Copiar código embed
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-800"></div>
+                  </div>
+                </div>
 
                 {/* Simulator Live Preview */}
                 <button
                   onClick={() => onOpenSimulator(video)}
                   title="Testar no Simulador de Página de Vendas"
-                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors"
+                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
@@ -339,18 +365,9 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
                 <button
                   onClick={() => onOpenEdit(video)}
                   title="Configurar Player & Pitch Delay"
-                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors"
+                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors"
                 >
                   <Settings className="w-4 h-4" />
-                </button>
-
-                {/* Retention Analytics */}
-                <button
-                  onClick={() => onOpenAnalytics(video)}
-                  title="Ver Gráfico de Retenção"
-                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                  <BarChart3 className="w-4 h-4" />
                 </button>
 
                 {/* Trash/Delete */}

@@ -88,6 +88,75 @@ app.get('/api/videos', (_req, res) => {
   }
 });
 
+// Standalone iframe embed player page (Apenas o vídeo)
+app.get('/embed/:id', (req, res) => {
+  const videoId = req.params.id;
+  // Fallback to sample or uploaded video
+  const sampleVideoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeloTurb Player</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .player-wrap { position: relative; width: 100%; height: 100%; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+    .unmute-banner {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      background: #FACC15; color: #000; font-family: system-ui, sans-serif;
+      font-weight: 700; font-size: 13px; padding: 10px 22px; border-radius: 9999px;
+      display: flex; align-items: center; gap: 8px; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5); z-index: 50; white-space: nowrap;
+      animation: pulseBanner 2s infinite;
+    }
+    @keyframes pulseBanner {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.04); }
+    }
+    .progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.2); z-index: 30; }
+    .progress-fill { height: 100%; width: 0%; background: #E11D48; transition: width 0.15s linear; }
+  </style>
+</head>
+<body>
+  <div class="player-wrap">
+    <div id="unmute" class="unmute-banner">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+      <span>Seu vídeo já começou! Clique para ouvir áudio 🔊</span>
+    </div>
+    <video id="v" src="${sampleVideoUrl}" autoplay muted playsinline webkit-playsinline oncontextmenu="return false;"></video>
+    <div class="progress-bar"><div id="fill" class="progress-fill"></div></div>
+  </div>
+  <script>
+    (function() {
+      var v = document.getElementById('v');
+      var btn = document.getElementById('unmute');
+      var fill = document.getElementById('fill');
+      function unmuteAndRestart() {
+        v.currentTime = 0;
+        v.muted = false;
+        v.volume = 1;
+        v.play();
+        if (btn) btn.style.display = 'none';
+      }
+      if (btn) btn.onclick = function(e) { e.stopPropagation(); unmuteAndRestart(); };
+      v.onclick = function() { if (v.muted || (btn && btn.style.display !== 'none')) unmuteAndRestart(); };
+      v.addEventListener('timeupdate', function() {
+        if (fill && v.duration) {
+          var pct = (v.currentTime / v.duration) * 100;
+          fill.style.width = Math.min(100, Math.pow(pct / 100, 0.55) * 100) + '%';
+        }
+      });
+      v.play().catch(function() { v.muted = true; v.play(); });
+    })();
+  </script>
+</body>
+</html>`);
+});
+
 // Development vs Production setup
 if (process.env.NODE_ENV !== 'production') {
   // In development, mount Vite dev server as middleware
