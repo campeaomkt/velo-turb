@@ -41,7 +41,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const [autoplayText, setAutoplayText] = useState<string>(
     video.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'
   );
-  const [autoplayTheme, setAutoplayTheme] = useState<'yellow' | 'black' | 'red' | 'purple'>(
+  const [autoplayTheme, setAutoplayTheme] = useState<'yellow' | 'black' | 'red' | 'purple' | 'green'>(
     video.settings.smartAutoplayTheme || 'yellow'
   );
 
@@ -50,7 +50,8 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     black: { bg: '#09090B', text: '#FFFFFF', border: '#27272A', name: 'Preto Elegante' },
     red: { bg: '#E11D48', text: '#FFFFFF', border: '#BE123C', name: 'Vermelho Urgência' },
     purple: { bg: '#8B5CF6', text: '#FFFFFF', border: '#7C3AED', name: 'Roxo VIP' },
-  }[autoplayTheme];
+    green: { bg: '#65A30D', text: '#FFFFFF', border: '#4D7C0F', name: 'Verde Oliva' },
+  }[autoplayTheme] || { bg: '#FACC15', text: '#000000', border: '#EAB308', name: 'Amarelo Atenção' };
 
   if (!isOpen) return null;
 

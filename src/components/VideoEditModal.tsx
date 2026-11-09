@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
-import { Settings, Play, Sparkles, Shield, Clock, Palette, Check, Eye, X, Volume2, Link as LinkIcon, RotateCcw, Crosshair, Upload } from 'lucide-react';
-import { VideoItem, PlayerSettings, Folder, ThumbSniperSettings } from '../types';
+import {
+  Settings,
+  Play,
+  Sparkles,
+  Shield,
+  Clock,
+  Palette,
+  Check,
+  Eye,
+  X,
+  Volume2,
+  Link as LinkIcon,
+  RotateCcw,
+  Crosshair,
+  ArrowLeft,
+  Upload,
+  Layers,
+  VolumeX,
+} from 'lucide-react';
+import { VideoItem, PlayerSettings, Folder } from '../types';
 import { VideoPlayer } from './VideoPlayer';
 import { formatTime } from '../utils/embedGenerator';
 import { ThumbSniperModal } from './ThumbSniperModal';
@@ -15,6 +33,8 @@ interface VideoEditModalProps {
   onOpenEmbed: (video: VideoItem) => void;
 }
 
+export type EditTab = 'style' | 'progress' | 'autoplay' | 'pitch' | 'thumbsniper' | 'cta' | 'security';
+
 export const VideoEditModal: React.FC<VideoEditModalProps> = ({
   video,
   folders,
@@ -24,11 +44,11 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
   onOpenEmbed,
 }) => {
   const [formData, setFormData] = useState<VideoItem>({ ...video });
-  const [activeTab, setActiveTab] = useState<'conversion' | 'design' | 'thumbsniper' | 'cta' | 'security'>('conversion');
+  // Start on Smart Autoplay as requested by user
+  const [activeTab, setActiveTab] = useState<EditTab>('autoplay');
   const [showThumbSniperModal, setShowThumbSniperModal] = useState(false);
   const [pitchMinutes, setPitchMinutes] = useState(Math.floor((video.settings.pitchDelaySeconds || 0) / 60));
   const [pitchSeconds, setPitchSeconds] = useState((video.settings.pitchDelaySeconds || 0) % 60);
-  const [previewResumePrompt, setPreviewResumePrompt] = useState(false);
 
   if (!isOpen) return null;
 
@@ -54,6 +74,14 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
     onClose();
   };
 
+  // Preview Mode for the video player on the right
+  const previewMode: 'normal' | 'autoplay' | 'resume' | 'thumbsniper' = (() => {
+    if (activeTab === 'autoplay') return 'autoplay';
+    if (activeTab === 'progress') return 'resume';
+    if (activeTab === 'thumbsniper') return 'thumbsniper';
+    return 'normal';
+  })();
+
   const colorPresets = [
     { name: 'Vermelho VTurb', hex: '#E11D48' },
     { name: 'Verde Conversão', hex: '#10B981' },
@@ -63,486 +91,425 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
     { name: 'Preto Absoluto', hex: '#0F172A' },
   ];
 
+  // Menu items matching VTurb layout in image_cda07bcf.png
+  const menuItems = [
+    {
+      id: 'style' as EditTab,
+      name: 'Estilo & Design',
+      icon: Palette,
+      status: null,
+    },
+    {
+      id: 'progress' as EditTab,
+      name: 'Progresso Inteligente',
+      icon: RotateCcw,
+      status: formData.settings.resumePlayback ? 'On' : 'Off',
+    },
+    {
+      id: 'autoplay' as EditTab,
+      name: 'Smart Autoplay™',
+      icon: Volume2,
+      status: formData.settings.smartAutoplay ? 'On' : 'Off',
+    },
+    {
+      id: 'pitch' as EditTab,
+      name: 'Turbo & Pitch Delay',
+      icon: Clock,
+      status: (formData.settings.pitchDelaySeconds || 0) > 0 ? 'On' : 'Off',
+    },
+    {
+      id: 'thumbsniper' as EditTab,
+      name: 'ThumbSniper™',
+      icon: Crosshair,
+      status: (formData.settings.thumbSniper?.enabled ?? true) ? 'On' : 'Off',
+    },
+    {
+      id: 'cta' as EditTab,
+      name: 'Botões de ação',
+      icon: LinkIcon,
+      status: Boolean(formData.settings.ctaUrl && formData.settings.ctaUrl.trim()) ? 'On' : 'Off',
+    },
+    {
+      id: 'security' as EditTab,
+      name: 'Segurança & DRM',
+      icon: Shield,
+      status: formData.settings.antiDownload ? 'On' : 'Off',
+    },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl w-full max-w-7xl h-[94vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden font-sans">
         
         {/* Top Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-rose-600" />
-              Configurar Player & Conversão
+        <div className="px-6 py-3.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="text-slate-500 hover:text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Voltar ao vídeo</span>
+            </button>
+            <div className="h-4 w-px bg-slate-300" />
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span className="text-rose-600 font-extrabold">VTurb</span>
+              <span>•</span>
+              <span className="truncate max-w-md">{formData.title}</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Personalize o player VSL, configure o Pitch Delay e ative as proteções anti-pirataria.
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => onOpenEmbed(formData)}
-              className="px-3.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold text-xs border border-rose-200 transition-colors"
+              className="px-3.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-xs border border-rose-200 transition-colors cursor-pointer"
             >
               Obter Código da PV
             </button>
             <button
+              onClick={handleSave}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-transform active:scale-95 cursor-pointer"
+            >
+              Salvar Alterações
+            </button>
+            <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Main Body (2 Columns: Controls on left, Live Player Preview on right) */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+        {/* Modal Main Body (VTurb 3-Pane Architecture matching image_cda07bcf.png) */}
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
           
-          {/* LEFT COLUMN: Configuration Tabs & Inputs */}
-          <div className="lg:col-span-7 space-y-5">
-            
-            {/* Title & Folder Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nome do Vídeo / VSL
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium"
-                />
-              </div>
-
+          {/* PANE 1: Left Menu Sidebar (matching image_cda07bcf.png) */}
+          <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/70 p-4 shrink-0 flex flex-col justify-between overflow-y-auto">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pasta
-                </label>
-                <select
-                  value={formData.folderId}
-                  onChange={(e) => setFormData({ ...formData, folderId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 bg-white"
-                >
-                  {folders.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 mb-1">
+                  Configurações de Vídeo
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Edite cada recurso individualmente com pré-visualização ao vivo.
+                </p>
+              </div>
+
+              {/* Menu list with On/Off Badges */}
+              <div className="space-y-1">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isSelected = activeTab === item.id;
+                  const isOn = item.status === 'On';
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80 ring-1 ring-blue-500/20'
+                          : 'text-slate-600 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <span>{item.name}</span>
+                      </div>
+
+                      {item.status && (
+                        <span
+                          className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            isOn
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                              : 'bg-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Video Title & Folder Quick Edit */}
+              <div className="pt-3 border-t border-slate-200 space-y-2">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                    Nome da VSL
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                    Pasta
+                  </label>
+                  <select
+                    value={formData.folderId}
+                    onChange={(e) => setFormData({ ...formData, folderId: e.target.value })}
+                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium focus:ring-1 focus:ring-blue-500"
+                  >
+                    {folders.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Config Sub-Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-200 pb-2 overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('conversion')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'conversion' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Conversão & Pitch
-              </button>
-              <button
-                onClick={() => setActiveTab('thumbsniper')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'thumbsniper' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <Crosshair className="w-3.5 h-3.5 text-rose-300" />
-                <span>ThumbSniper™</span>
-                <span className="text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black">NOVO</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('design')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'design' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <Palette className="w-3.5 h-3.5" /> Design & Cores
-              </button>
-              <button
-                onClick={() => setActiveTab('cta')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'cta' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <LinkIcon className="w-3.5 h-3.5" /> Botão de Compra CTA
-              </button>
-              <button
-                onClick={() => setActiveTab('security')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'security' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" /> Segurança & DRM
-              </button>
+            <div className="pt-3 text-[10px] text-slate-400 font-mono">
+              VeloTurb Engine v2.5.0
             </div>
+          </div>
 
-            {/* TAB CONTENT: Conversion */}
-            {activeTab === 'conversion' && (
-              <div className="space-y-4">
-                
-                {/* Pitch Delay Settings */}
-                <div className="p-4 bg-rose-50/50 border border-rose-200 rounded-xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-rose-600" />
-                        Pitch Delay (Tempo para Revelar a Oferta na PV)
-                      </h4>
-                      <p className="text-[11px] text-rose-700 mt-0.5">
-                        O botão de compra ou a seção de checkout só aparecerão neste exato momento.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-rose-200">
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-500">Minutos</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="180"
-                        value={pitchMinutes}
-                        onChange={(e) => handlePitchChange(parseInt(e.target.value) || 0, pitchSeconds)}
-                        className="w-20 px-2 py-1 text-sm font-mono font-bold border border-slate-300 rounded text-center"
-                      />
-                    </div>
-                    <span className="text-lg font-bold text-slate-400 mt-3">:</span>
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-500">Segundos</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={pitchSeconds}
-                        onChange={(e) => handlePitchChange(pitchMinutes, parseInt(e.target.value) || 0)}
-                        className="w-20 px-2 py-1 text-sm font-mono font-bold border border-slate-300 rounded text-center"
-                      />
-                    </div>
-                    <div className="ml-auto text-right">
-                      <div className="text-[11px] text-slate-500">Total calculado:</div>
-                      <div className="text-sm font-mono font-bold text-rose-600">
-                        {formData.settings.pitchDelaySeconds} segundos
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Smart Autoplay Settings */}
+          {/* PANE 2: Center Dedicated Configuration Form for activeTab */}
+          <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-white">
+            
+            {/* 1. SMART AUTOPLAY (Separado individualmente como solicitado!) */}
+            {activeTab === 'autoplay' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Volume2 className="w-4 h-4 text-slate-700" />
-                        Smart Autoplay com Faixa de Áudio
+                      <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Volume2 className="w-4 h-4 text-amber-500" />
+                        Smart Autoplay™ com Faixa de Áudio
                       </h4>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         Inicia o vídeo mudo imediatamente e exibe banner animado para o lead clicar e ouvir.
                       </p>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.settings.smartAutoplay}
-                      onChange={(e) => updateSetting('smartAutoplay', e.target.checked)}
-                      className="w-5 h-5 accent-rose-600 rounded cursor-pointer"
-                    />
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.settings.smartAutoplay}
+                        onChange={(e) => updateSetting('smartAutoplay', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
                   </div>
+                </div>
 
-                  {formData.settings.smartAutoplay && (
-                    <div className="pt-3 border-t border-slate-200 space-y-4">
-                      
-                      {/* Model / Shape Chooser (image_17189bc4.png request) */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                            <span>🎨 Modelo & Formato do Autoplay:</span>
-                          </label>
-                          <span className="text-[10px] text-slate-500 font-medium">6 opções visuais</span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {([
-                            { id: 'pill', name: 'Pílula (Clássico)', desc: 'Bordas 100% arredondadas' },
-                            { id: 'square', name: 'Quadrado Reto', desc: 'Cantos retos modernos' },
-                            { id: 'rounded', name: 'Cantos Suaves', desc: 'Bordas levemente curvas' },
-                            { id: 'two_lines', name: 'Duas Linhas', desc: 'Título + Instrução de som' },
-                            { id: 'full_width', name: 'Faixa Completa', desc: '100% largura do vídeo' },
-                            { id: 'minimal', name: 'Mini Badge', desc: 'Discreto e compacto' },
-                          ] as const).map((shape) => {
-                            const isSelected = (formData.settings.smartAutoplayShape || 'pill') === shape.id;
-                            return (
-                              <button
-                                key={shape.id}
-                                type="button"
-                                onClick={() => updateSetting('smartAutoplayShape', shape.id)}
-                                className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-rose-50/80 border-rose-500 text-rose-950 ring-1 ring-rose-500/20 shadow-xs'
-                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className="text-[11px] font-bold flex items-center justify-between">
-                                  <span>{shape.name}</span>
-                                  {isSelected && <span className="text-rose-600 font-black">✓</span>}
-                                </div>
-                                <div className="text-[9.5px] text-slate-500 mt-0.5 line-clamp-1">{shape.desc}</div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Position Grid Chooser */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                            <span>📍 Posição no Vídeo:</span>
-                          </label>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            {formData.settings.smartAutoplayPosition || 'top'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
-                          {([
-                            { id: 'top', label: 'Topo Centro' },
-                            { id: 'center', label: 'Centro' },
-                            { id: 'bottom', label: 'Inferior' },
-                            { id: 'top_left', label: 'Topo Esq.' },
-                            { id: 'top_right', label: 'Topo Dir.' },
-                            { id: 'bottom_left', label: 'Inf. Esq.' },
-                            { id: 'bottom_right', label: 'Inf. Dir.' },
-                          ] as const).map((pos) => {
-                            const isSelected = (formData.settings.smartAutoplayPosition || 'top') === pos.id;
-                            return (
-                              <button
-                                key={pos.id}
-                                type="button"
-                                onClick={() => updateSetting('smartAutoplayPosition', pos.id)}
-                                className={`py-1.5 px-2 rounded-lg border text-[10px] font-bold text-center transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                                }`}
-                              >
-                                {pos.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Opacity Control (Slider & Fast Buttons) */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                            <span>👁️ Opacidade do Banner:</span>
-                          </label>
-                          <span className="text-xs font-mono font-bold text-rose-600">
-                            {formData.settings.smartAutoplayOpacity ?? 100}%
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="range"
-                            min="20"
-                            max="100"
-                            step="5"
-                            value={formData.settings.smartAutoplayOpacity ?? 100}
-                            onChange={(e) => updateSetting('smartAutoplayOpacity', parseInt(e.target.value, 10))}
-                            className="flex-1 accent-rose-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
-                          />
-                          <div className="flex items-center gap-1">
-                            {[100, 90, 80, 70, 50].map((val) => (
-                              <button
-                                key={val}
-                                type="button"
-                                onClick={() => updateSetting('smartAutoplayOpacity', val)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
-                                  (formData.settings.smartAutoplayOpacity ?? 100) === val
-                                    ? 'bg-rose-100 border-rose-400 text-rose-700'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                }`}
-                              >
-                                {val}%
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Headline Text */}
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                          Texto Principal da Faixa de Som
+                {formData.settings.smartAutoplay && (
+                  <div className="space-y-4">
+                    
+                    {/* Modelos / Formatos */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span>🎨 Modelo & Formato do Autoplay:</span>
                         </label>
-                        <input
-                          type="text"
-                          value={formData.settings.smartAutoplayText}
-                          onChange={(e) => updateSetting('smartAutoplayText', e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-rose-500 font-bold"
-                        />
+                        <span className="text-[10px] text-slate-500 font-mono">6 modelos visuais</span>
                       </div>
-
-                      {/* Optional Subtext for two_lines model */}
-                      {(formData.settings.smartAutoplayShape === 'two_lines') && (
-                        <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
-                          <label className="block text-[11px] font-bold text-amber-950">
-                            Segunda Linha (Instrução de Ação para o Lead):
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}
-                            onChange={(e) => updateSetting('smartAutoplaySubtext', e.target.value)}
-                            placeholder="Ex: Clique aqui para ativar o áudio agora 🔊"
-                            className="w-full px-3 py-1.5 text-xs border border-amber-300 rounded-lg bg-white focus:ring-1 focus:ring-amber-500 font-medium"
-                          />
-                          <div className="flex flex-wrap gap-1">
-                            {[
-                              'Clique aqui para ativar o áudio 🔊',
-                              'Toque na tela para ouvir agora 🔊',
-                              'Haz clic para escuchar el audio 🔊',
-                              'Toca para escuchar con volumen alto 🔊',
-                            ].map((subPreset) => (
-                              <button
-                                key={subPreset}
-                                type="button"
-                                onClick={() => updateSetting('smartAutoplaySubtext', subPreset)}
-                                className="text-[9.5px] px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 hover:bg-amber-100/50 cursor-pointer"
-                              >
-                                {subPreset}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Presets PT & ES */}
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">Modelos Prontos de Frases (PT / ES):</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            'Seu vídeo já começou! Clique para ouvir áudio',
-                            'ATENÇÃO: Clique para ouvir com som 🔊',
-                            '¡Tu video ya comenzó! Haz clic para escuchar el audio 🔊',
-                            'ATENCIÓN: Haz clic para escuchar con audio 🔊',
-                            'O áudio está mutado. Clique para ativar o som',
-                            'Assista com som antes que saia do ar! 🔊',
-                          ].map((preset) => (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {([
+                          { id: 'pill', name: 'Pílula (Clássico)', desc: 'Bordas 100% arredondadas' },
+                          { id: 'square', name: 'Quadrado Reto', desc: 'Cantos retos modernos' },
+                          { id: 'rounded', name: 'Cantos Suaves', desc: 'Bordas levemente curvas' },
+                          { id: 'two_lines', name: 'Duas Linhas', desc: 'Título + Instrução de som' },
+                          { id: 'full_width', name: 'Faixa Completa', desc: '100% largura do vídeo' },
+                          { id: 'minimal', name: 'Mini Badge', desc: 'Discreto e compacto' },
+                        ] as const).map((shape) => {
+                          const isSelected = (formData.settings.smartAutoplayShape || 'pill') === shape.id;
+                          return (
                             <button
-                              key={preset}
+                              key={shape.id}
                               type="button"
-                              onClick={() => updateSetting('smartAutoplayText', preset)}
-                              className={`text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                                formData.settings.smartAutoplayText === preset
-                                  ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold'
-                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              onClick={() => updateSetting('smartAutoplayShape', shape.id)}
+                              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-blue-50 border-blue-500 text-blue-950 ring-2 ring-blue-500/20 shadow-xs'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                               }`}
                             >
-                              {preset}
+                              <div className="text-xs font-bold flex items-center justify-between">
+                                <span>{shape.name}</span>
+                                {isSelected && <span className="text-blue-600 font-black">✓</span>}
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{shape.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Posição no Vídeo */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span>📍 Posição no Vídeo:</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {formData.settings.smartAutoplayPosition || 'top'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {([
+                          { id: 'top', label: 'Topo Centro' },
+                          { id: 'center', label: 'Centro da Tela' },
+                          { id: 'bottom', label: 'Inferior' },
+                          { id: 'top_left', label: 'Topo Esq.' },
+                          { id: 'top_right', label: 'Topo Dir.' },
+                          { id: 'bottom_left', label: 'Inf. Esq.' },
+                          { id: 'bottom_right', label: 'Inf. Dir.' },
+                        ] as const).map((pos) => {
+                          const isSelected = (formData.settings.smartAutoplayPosition || 'top') === pos.id;
+                          return (
+                            <button
+                              key={pos.id}
+                              type="button"
+                              onClick={() => updateSetting('smartAutoplayPosition', pos.id)}
+                              className={`py-2 px-2.5 rounded-lg border text-xs font-bold text-center transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pos.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Opacidade */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800">
+                          👁️ Opacidade do Banner:
+                        </label>
+                        <span className="text-xs font-mono font-bold text-blue-600">
+                          {formData.settings.smartAutoplayOpacity ?? 100}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="20"
+                          max="100"
+                          step="5"
+                          value={formData.settings.smartAutoplayOpacity ?? 100}
+                          onChange={(e) => updateSetting('smartAutoplayOpacity', parseInt(e.target.value, 10))}
+                          className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                        />
+                        <div className="flex items-center gap-1">
+                          {[100, 90, 80, 70, 50].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => updateSetting('smartAutoplayOpacity', val)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                                (formData.settings.smartAutoplayOpacity ?? 100) === val
+                                  ? 'bg-blue-100 border-blue-400 text-blue-700'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {val}%
                             </button>
                           ))}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Color Theme */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-[11px] text-slate-600 font-semibold">Cor da Faixa:</span>
-                        {(['yellow', 'black', 'red', 'purple'] as const).map((theme) => (
+                    {/* Texto Principal */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                      <label className="block text-xs font-bold text-slate-800">
+                        Texto Principal da Faixa de Som:
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.settings.smartAutoplayText}
+                        onChange={(e) => updateSetting('smartAutoplayText', e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 font-bold bg-white"
+                      />
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {[
+                          'Seu vídeo já começou! Clique para ouvir áudio',
+                          'ATENÇÃO: Clique para ouvir com som 🔊',
+                          '¡Tu video ya comenzó! Haz clic para escuchar el audio 🔊',
+                          'ATENCIÓN: Haz clic para escuchar con audio 🔊',
+                        ].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => updateSetting('smartAutoplayText', preset)}
+                            className="text-[10px] px-2 py-1 rounded bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Subtexto para 2 Linhas */}
+                    {formData.settings.smartAutoplayShape === 'two_lines' && (
+                      <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+                        <label className="block text-xs font-bold text-amber-950">
+                          Segunda Linha (Instrução de Ação para o Lead):
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}
+                          onChange={(e) => updateSetting('smartAutoplaySubtext', e.target.value)}
+                          placeholder="Ex: Clique aqui para ativar o áudio agora 🔊"
+                          className="w-full px-3 py-1.5 text-xs border border-amber-300 rounded-lg bg-white focus:ring-1 focus:ring-amber-500 font-medium"
+                        />
+                      </div>
+                    )}
+
+                    {/* Cor da Faixa */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                      <span className="text-xs font-bold text-slate-800 block">Cor da Faixa:</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(['yellow', 'black', 'red', 'purple', 'green'] as const).map((theme) => (
                           <button
                             key={theme}
                             type="button"
                             onClick={() => updateSetting('smartAutoplayTheme', theme)}
-                            className={`px-2.5 py-1 text-[11px] rounded font-bold capitalize transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 text-xs rounded-lg font-bold capitalize transition-all cursor-pointer ${
                               formData.settings.smartAutoplayTheme === theme
-                                ? 'ring-2 ring-rose-500 ring-offset-1'
+                                ? 'ring-2 ring-blue-500 ring-offset-1'
                                 : 'opacity-70 hover:opacity-100'
                             } ${
                               theme === 'yellow' ? 'bg-amber-400 text-black' :
                               theme === 'black' ? 'bg-slate-900 text-white' :
-                              theme === 'red' ? 'bg-rose-600 text-white' : 'bg-purple-600 text-white'
+                              theme === 'red' ? 'bg-rose-600 text-white' :
+                              theme === 'purple' ? 'bg-purple-600 text-white' : 'bg-[#65a30d] text-white'
                             }`}
                           >
-                            {theme === 'yellow' ? 'Amarelo Atenção' : theme === 'black' ? 'Preto Elegante' : theme === 'red' ? 'Vermelho' : 'Roxo'}
+                            {theme === 'yellow' ? 'Amarelo Atenção' : theme === 'black' ? 'Preto Elegante' : theme === 'red' ? 'Vermelho' : theme === 'purple' ? 'Roxo' : 'Verde Oliva (VTurb)'}
                           </button>
                         ))}
                       </div>
-
-                      {/* Live Preview Box of the Autoplay Banner */}
-                      <div className="p-3 bg-slate-950 rounded-xl space-y-1.5 border border-slate-800">
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                          <span>PRÉ-VISUALIZAÇÃO AO VIVO DO BANNER:</span>
-                          <span>Opacidade: {formData.settings.smartAutoplayOpacity ?? 100}%</span>
-                        </div>
-                        <div className="relative h-20 bg-slate-900 rounded-lg flex items-center justify-center overflow-hidden border border-slate-800/80">
-                          <div
-                            style={{
-                              opacity: (formData.settings.smartAutoplayOpacity ?? 100) / 100,
-                              backgroundColor:
-                                formData.settings.smartAutoplayTheme === 'black' ? '#09090B' :
-                                formData.settings.smartAutoplayTheme === 'red' ? '#E11D48' :
-                                formData.settings.smartAutoplayTheme === 'purple' ? '#8B5CF6' : '#FACC15',
-                              color: formData.settings.smartAutoplayTheme === 'yellow' ? '#000000' : '#FFFFFF',
-                              borderRadius:
-                                formData.settings.smartAutoplayShape === 'square' ? '0px' :
-                                formData.settings.smartAutoplayShape === 'rounded' ? '12px' :
-                                formData.settings.smartAutoplayShape === 'full_width' ? '0px' :
-                                formData.settings.smartAutoplayShape === 'two_lines' ? '14px' :
-                                formData.settings.smartAutoplayShape === 'minimal' ? '8px' : '9999px',
-                              width: formData.settings.smartAutoplayShape === 'full_width' ? '100%' : 'auto',
-                            }}
-                            className={`px-4 py-2 text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg ${
-                              formData.settings.smartAutoplayShape === 'two_lines' ? 'flex-col text-center py-2.5' : ''
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>🔇</span>
-                              <span>{formData.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}</span>
-                              <span>🔊</span>
-                            </div>
-                            {formData.settings.smartAutoplayShape === 'two_lines' && (
-                              <div className="text-[10.5px] opacity-90 font-medium">
-                                {formData.settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
                     </div>
-                  )}
-                </div>
 
-                {/* Fake Progress Bar */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">
-                        Barra de Progresso Falsa (Fake Progress Bar)
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        Avança mais rápido no início para dar sensação de brevidade e aumentar retenção.
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.settings.fakeProgressBar}
-                      onChange={(e) => updateSetting('fakeProgressBar', e.target.checked)}
-                      className="w-5 h-5 accent-rose-600 rounded cursor-pointer"
-                    />
                   </div>
-                </div>
+                )}
+              </div>
+            )}
 
-                {/* Resume Playback (Card Laranja de Retomada Inteligente - image_8f1ffac5.png) */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5">
+            {/* 2. PROGRESSO INTELIGENTE (Retomada & Fake Progress) */}
+            {activeTab === 'progress' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
+                      <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <RotateCcw className="w-4 h-4 text-orange-500" />
                         Retomada Inteligente (Resume Playback)
                       </h4>
-                      <p className="text-[11px] text-slate-500">
-                        Quando o lead sai e volta ao site, exibe aviso para continuar de onde parou ou recomeçar.
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Exibe o card inteligente quando o lead volta ao site para continuar de onde parou.
                       </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -552,113 +519,173 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         onChange={(e) => updateSetting('resumePlayback', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
                     </label>
                   </div>
-
-                  {formData.settings.resumePlayback && (
-                    <div className="space-y-3 pt-2 border-t border-slate-200">
-                      
-                      {/* Language Selection: PT-BR vs ES-LATAM */}
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">
-                          Idioma do Aviso de Retomada:
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateSetting('resumePlaybackLanguage', 'pt');
-                              updateSetting('resumePlaybackTitle', 'Você já começou a assistir esse vídeo');
-                              updateSetting('resumePlaybackContinueText', 'Continuar assistindo?');
-                              updateSetting('resumePlaybackRestartText', 'Assistir do início?');
-                            }}
-                            className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                              (formData.settings.resumePlaybackLanguage || 'pt') === 'pt'
-                                ? 'bg-orange-50 border-orange-500 text-orange-950 shadow-xs'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            <span>🇧🇷</span>
-                            <span>Português (Brasil)</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateSetting('resumePlaybackLanguage', 'es');
-                              updateSetting('resumePlaybackTitle', 'Ya has comenzado a ver este video');
-                              updateSetting('resumePlaybackContinueText', '¿Continuar viendo?');
-                              updateSetting('resumePlaybackRestartText', '¿Ver desde el inicio?');
-                            }}
-                            className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                              formData.settings.resumePlaybackLanguage === 'es'
-                                ? 'bg-orange-50 border-orange-500 text-orange-950 shadow-xs'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            <span>🌎</span>
-                            <span>Español (LATAM)</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Visual Preview of the Card matching image_8f1ffac5.png */}
-                      <div className="p-3 bg-slate-900 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold">
-                          <span>PRÉ-VISUALIZAÇÃO DO AVISO:</span>
-                          <button
-                            type="button"
-                            onClick={() => setPreviewResumePrompt(!previewResumePrompt)}
-                            className="text-orange-400 hover:text-orange-300 underline font-bold cursor-pointer"
-                          >
-                            {previewResumePrompt ? 'Fechar no Player' : 'Testar no Player ao Lado'}
-                          </button>
-                        </div>
-
-                        <div className="bg-[#EB6B09] rounded-xl p-4 text-white text-center shadow-lg border border-orange-400/30">
-                          <h5 className="font-extrabold text-sm sm:text-base leading-snug mb-3 drop-shadow-xs">
-                            {formData.settings.resumePlaybackLanguage === 'es'
-                              ? 'Ya has comenzado a ver este video'
-                              : 'Você já começou a assistir esse vídeo'}
-                          </h5>
-                          <div className="flex items-center justify-center gap-4 text-xs font-bold">
-                            <div className="flex items-center gap-1.5 opacity-95">
-                              <div className="w-5 h-5 rounded-full border border-white flex items-center justify-center">
-                                <Play className="w-2.5 h-2.5 fill-white text-white ml-0.2" />
-                              </div>
-                              <span>
-                                {formData.settings.resumePlaybackLanguage === 'es'
-                                  ? '¿Continuar viendo?'
-                                  : 'Continuar assistindo?'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 opacity-95">
-                              <div className="w-5 h-5 rounded-full border border-white flex items-center justify-center">
-                                <RotateCcw className="w-2.5 h-2.5 text-white" />
-                              </div>
-                              <span>
-                                {formData.settings.resumePlaybackLanguage === 'es'
-                                  ? '¿Ver desde el inicio?'
-                                  : 'Assistir do início?'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  )}
                 </div>
 
+                {formData.settings.resumePlayback && (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                    {/* Language Selection */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                        Idioma do Aviso de Retomada:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateSetting('resumePlaybackLanguage', 'pt');
+                            updateSetting('resumePlaybackTitle', 'Você já começou a assistir esse vídeo');
+                            updateSetting('resumePlaybackContinueText', 'Continuar assistindo?');
+                            updateSetting('resumePlaybackRestartText', 'Assistir do início?');
+                          }}
+                          className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            (formData.settings.resumePlaybackLanguage || 'pt') === 'pt'
+                              ? 'bg-orange-50 border-orange-500 text-orange-950 shadow-xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span>🇧🇷</span>
+                          <span>Português (Brasil)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateSetting('resumePlaybackLanguage', 'es');
+                            updateSetting('resumePlaybackTitle', 'Ya has comenzado a ver este video');
+                            updateSetting('resumePlaybackContinueText', '¿Continuar viendo?');
+                            updateSetting('resumePlaybackRestartText', '¿Ver desde el inicio?');
+                          }}
+                          className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            formData.settings.resumePlaybackLanguage === 'es'
+                              ? 'bg-orange-50 border-orange-500 text-orange-950 shadow-xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span>🌎</span>
+                          <span>Español (LATAM)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Customizable texts */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Título do Card:</label>
+                        <input
+                          type="text"
+                          value={formData.settings.resumePlaybackTitle || (formData.settings.resumePlaybackLanguage === 'es' ? 'Ya has comenzado a ver este video' : 'Você já começou a assistir esse vídeo')}
+                          onChange={(e) => updateSetting('resumePlaybackTitle', e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-orange-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Botão Continuar:</label>
+                          <input
+                            type="text"
+                            value={formData.settings.resumePlaybackContinueText || (formData.settings.resumePlaybackLanguage === 'es' ? '¿Continuar viendo?' : 'Continuar assistindo?')}
+                            onChange={(e) => updateSetting('resumePlaybackContinueText', e.target.value)}
+                            className="w-full px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-orange-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Botão Recomeçar:</label>
+                          <input
+                            type="text"
+                            value={formData.settings.resumePlaybackRestartText || (formData.settings.resumePlaybackLanguage === 'es' ? '¿Ver desde el inicio?' : 'Assistir do início?')}
+                            onChange={(e) => updateSetting('resumePlaybackRestartText', e.target.value)}
+                            className="w-full px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-orange-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fake Progress Bar */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">
+                        Barra de Progresso Acelerada (Fake Progress)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Avança visualmente mais rápido no início da VSL para aumentar retenção e prender o lead.
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={formData.settings.fakeProgressBar}
+                      onChange={(e) => updateSetting('fakeProgressBar', e.target.checked)}
+                      className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* TAB CONTENT: ThumbSniper™ (matching image_5ab05cef.png, image_217ed8ff.png, image_f3ee47eb.png, image_3d394116.png) */}
+            {/* 3. TURBO & PITCH DELAY */}
+            {activeTab === 'pitch' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="p-4 bg-rose-50/50 border border-rose-200 rounded-xl space-y-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-rose-950 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-rose-600" />
+                      Pitch Delay (Revelar Botão de Compra no Tempo Certo)
+                    </h4>
+                    <p className="text-xs text-rose-800 mt-0.5">
+                      Esconde o botão ou oferta na sua PV e só revela no momento exato em que você faz a oferta.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-rose-200">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Minutos</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="180"
+                        value={pitchMinutes}
+                        onChange={(e) => handlePitchChange(parseInt(e.target.value) || 0, pitchSeconds)}
+                        className="w-20 px-2 py-1.5 text-base font-mono font-bold border border-slate-300 rounded-lg text-center"
+                      />
+                    </div>
+                    <span className="text-xl font-bold text-slate-400 mt-5">:</span>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Segundos</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={pitchSeconds}
+                        onChange={(e) => handlePitchChange(pitchMinutes, parseInt(e.target.value) || 0)}
+                        className="w-20 px-2 py-1.5 text-base font-mono font-bold border border-slate-300 rounded-lg text-center"
+                      />
+                    </div>
+                    <div className="ml-auto text-right">
+                      <div className="text-xs text-slate-500">Momento de Revelação:</div>
+                      <div className="text-base font-mono font-bold text-rose-600">
+                        {formData.settings.pitchDelaySeconds}s ({formatTime(formData.settings.pitchDelaySeconds || 0)})
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white/80 rounded-lg border border-rose-200 text-xs text-slate-600 leading-relaxed space-y-1">
+                    <p className="font-bold text-slate-800">Como funciona na sua página:</p>
+                    <p>
+                      Basta colocar a classe <code className="bg-rose-100 text-rose-800 px-1 py-0.5 rounded font-mono font-bold">esconder-pitch</code> ou <code className="bg-rose-100 text-rose-800 px-1 py-0.5 rounded font-mono font-bold">delay</code> no botão da sua página. O player do VeloTurb revelará a oferta automaticamente quando esse tempo for atingido!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. THUMBSNIPER™ */}
             {activeTab === 'thumbsniper' && (
-              <div className="space-y-4">
-                
-                {/* Status & Toggle Header */}
+              <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
@@ -666,17 +693,16 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         <Crosshair className="w-4 h-4 text-rose-500" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                           ThumbSniper™
-                          <span className="text-[10px] text-slate-500 font-normal">Pausa com Gatilho e Mãozinha Animada</span>
+                          <span className="text-[10px] text-slate-500 font-normal">Pausa com Gatilho e Mãozinha 👆</span>
                         </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Exibe aviso animado estilo GIF com gatilho de urgência ao pausar o vídeo.
+                        <p className="text-xs text-slate-500">
+                          Exibe aviso animado com gatilho de urgência ao pausar o vídeo.
                         </p>
                       </div>
                     </div>
 
-                    {/* Toggle button on/off matching screenshot image_217ed8ff.png */}
                     <button
                       type="button"
                       onClick={() => {
@@ -699,83 +725,67 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                       {(formData.settings.thumbSniper?.enabled ?? true) ? 'on' : 'off'}
                     </button>
                   </div>
-
-                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setShowThumbSniperModal(true)}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Crosshair className="w-3.5 h-3.5" />
-                      <span>Abrir Editor Completo do ThumbSniper™</span>
-                    </button>
-                    <span className="text-[11px] text-slate-500">
-                      Template atual: <strong className="text-slate-800">{formData.settings.thumbSniper?.templateId || 'ts_01'}</strong>
-                    </span>
-                  </div>
                 </div>
 
-                {/* Language Selector for ThumbSniper (matching Resume Playback UX) */}
+                {/* Idioma do ThumbSniper */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-800 mb-1.5">
-                      Idioma dos Textos do ThumbSniper™:
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' };
-                          updateSetting('thumbSniper', {
-                            ...current,
-                            enabled: true,
-                            language: 'pt',
-                            headline: 'Este vídeo ficará fora do ar em breve.',
-                            subheadline: 'Essa é sua última chance de assistir até o final.',
-                            buttonText: 'CONTINUAR ASSISTINDO',
-                            buttonColor: current.buttonColor || '#EF4444',
-                          });
-                        }}
-                        className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          (formData.settings.thumbSniper?.language || 'pt') === 'pt'
-                            ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/20'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span>🇧🇷</span>
-                        <span>Português (Brasil)</span>
-                      </button>
+                  <label className="block text-xs font-bold text-slate-800">
+                    Idioma dos Textos do ThumbSniper™:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' };
+                        updateSetting('thumbSniper', {
+                          ...current,
+                          enabled: true,
+                          language: 'pt',
+                          headline: 'Este vídeo ficará fora do ar em breve.',
+                          subheadline: 'Essa é sua última chance de assistir até o final.',
+                          buttonText: 'CONTINUAR ASSISTINDO',
+                          buttonColor: current.buttonColor || '#EF4444',
+                        });
+                      }}
+                      className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        (formData.settings.thumbSniper?.language || 'pt') === 'pt'
+                          ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/20'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>🇧🇷</span>
+                      <span>Português (Brasil)</span>
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_05' };
-                          updateSetting('thumbSniper', {
-                            ...current,
-                            enabled: true,
-                            language: 'es',
-                            headline: '¡Este video saldrá del aire pronto!',
-                            subheadline: 'Esta es tu última oportunidad de verlo hasta el final.',
-                            buttonText: 'CONTINUAR VIENDO',
-                            buttonColor: current.buttonColor || '#DC2626',
-                          });
-                        }}
-                        className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          formData.settings.thumbSniper?.language === 'es'
-                            ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/20'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span>🌎</span>
-                        <span>Español (LATAM)</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_05' };
+                        updateSetting('thumbSniper', {
+                          ...current,
+                          enabled: true,
+                          language: 'es',
+                          headline: '¡Este video saldrá del aire pronto!',
+                          subheadline: 'Esta es tu última oportunidad de verlo hasta el final.',
+                          buttonText: 'CONTINUAR VIENDO',
+                          buttonColor: current.buttonColor || '#DC2626',
+                        });
+                      }}
+                      className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        formData.settings.thumbSniper?.language === 'es'
+                          ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/20'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>🌎</span>
+                      <span>Español (LATAM)</span>
+                    </button>
                   </div>
 
-                  {/* Editable Text Fields for ThumbSniper */}
+                  {/* Textos editáveis */}
                   <div className="pt-2 border-t border-slate-200 space-y-2.5">
                     <div>
-                      <label className="block text-[10.5px] font-semibold text-slate-700 mb-0.5">Título / Chamada de Urgência:</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Título / Chamada de Urgência:</label>
                       <input
                         type="text"
                         value={formData.settings.thumbSniper?.headline || 'Este vídeo ficará fora do ar em breve.'}
@@ -789,7 +799,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10.5px] font-semibold text-slate-700 mb-0.5">Subtítulo de Alerta:</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Subtítulo de Alerta:</label>
                       <input
                         type="text"
                         value={formData.settings.thumbSniper?.subheadline || 'Essa é sua última chance de assistir até o final.'}
@@ -803,7 +813,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10.5px] font-semibold text-slate-700 mb-0.5">Texto do Botão com Mãozinha 👆:</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Texto do Botão com Mãozinha 👆:</label>
                       <input
                         type="text"
                         value={formData.settings.thumbSniper?.buttonText || 'CONTINUAR ASSISTINDO'}
@@ -819,11 +829,11 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                   </div>
                 </div>
 
-                {/* Templates Quick Chooser (with moving hand indicator) */}
+                {/* Templates de alta conversão */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-bold text-slate-900">Templates Prontos de Alta Conversão</h5>
-                    <span className="text-[10px] text-slate-500 font-mono">8 templates disponíveis (PT e ES)</span>
+                    <span className="text-[10px] text-slate-500 font-mono">8 templates disponíveis</span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -892,41 +902,12 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                     })}
                   </div>
                 </div>
-
-                {/* Custom GIF / Image Section */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <h5 className="text-xs font-bold text-slate-900">Ou use seu próprio GIF animado / imagem</h5>
-                  <p className="text-[11px] text-slate-500">
-                    Se você já tem uma animação personalizada de pausa, cole a URL abaixo:
-                  </p>
-                  <input
-                    type="url"
-                    value={formData.settings.thumbSniper?.customMediaUrl || ''}
-                    onChange={(e) => {
-                      updateSetting('thumbSniper', {
-                        ...(formData.settings.thumbSniper || {
-                          enabled: true,
-                          name: 'Custom ThumbSniper',
-                          type: 'custom',
-                          templateId: 'ts_01',
-                        }),
-                        type: 'custom',
-                        templateId: formData.settings.thumbSniper?.templateId || 'ts_01',
-                        customMediaUrl: e.target.value,
-                      });
-                    }}
-                    placeholder="https://exemplo.com/meu-gif-animado.gif"
-                    className="w-full px-3 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                </div>
-
               </div>
             )}
 
-            {/* TAB CONTENT: Design */}
-            {activeTab === 'design' && (
-              <div className="space-y-4">
-                {/* Accent Color */}
+            {/* 5. ESTILO & DESIGN */}
+            {activeTab === 'style' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <label className="block text-xs font-bold text-slate-900">
                     Cor Primária de Destaque do Player
@@ -937,7 +918,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         key={c.hex}
                         type="button"
                         onClick={() => updateSetting('primaryColor', c.hex)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
                           formData.settings.primaryColor === c.hex
                             ? 'border-slate-900 bg-white shadow-sm ring-2 ring-slate-900/10'
                             : 'border-slate-200 bg-white hover:bg-slate-100'
@@ -947,59 +928,30 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         <span>{c.name}</span>
                       </button>
                     ))}
-                    <div className="flex items-center gap-2 ml-2">
-                      <input
-                        type="color"
-                        value={formData.settings.primaryColor}
-                        onChange={(e) => updateSetting('primaryColor', e.target.value)}
-                        className="w-7 h-7 rounded border border-slate-300 cursor-pointer"
-                      />
-                      <span className="font-mono text-xs text-slate-600">{formData.settings.primaryColor}</span>
-                    </div>
                   </div>
                 </div>
 
-                {/* Player Controls Toggle */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900">Estilo dos Controles do Player</h4>
-                  
-                  {/* Highlighted VSL Professional Mode option */}
-                  <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl flex items-start justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <span className="text-xs font-extrabold text-rose-900 flex items-center gap-1.5">
-                        🔥 Modo VSL Profissional (Apenas Barra de Progresso)
-                      </span>
-                      <p className="text-[11px] text-rose-800 leading-relaxed">
-                        Oculta botões de play, pause, volume, tempo decorrido e tela cheia. O visitante vê apenas o vídeo rodando e a barra de progresso sutil na base, impedindo que saiba a duração ou desista antes da oferta.
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.settings.onlyProgressBar ?? true}
-                      onChange={(e) => updateSetting('onlyProgressBar', e.target.checked)}
-                      className="w-5 h-5 accent-rose-600 rounded cursor-pointer shrink-0 mt-1"
-                    />
-                  </div>
-
-                  <div className="space-y-2 text-xs pt-1">
+                  <h4 className="text-xs font-bold text-slate-900">Comportamento dos Controles VSL</h4>
+                  <div className="space-y-2 text-xs">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.settings.allowPause}
-                        onChange={(e) => updateSetting('allowPause', e.target.checked)}
-                        className="w-4 h-4 accent-rose-600 rounded"
+                        checked={formData.settings.onlyProgressBar}
+                        onChange={(e) => updateSetting('onlyProgressBar', e.target.checked)}
+                        className="w-4 h-4 accent-blue-600 rounded"
                       />
-                      <span>Permitir pausar ao clicar no vídeo (desmarcado = VSL contínua sem pausa)</span>
+                      <span>Modo VSL Profissional (apenas barra inferior, sem botões de pausa visíveis)</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.settings.speedControl}
-                        onChange={(e) => updateSetting('speedControl', e.target.checked)}
-                        className="w-4 h-4 accent-rose-600 rounded"
+                        checked={formData.settings.allowPause}
+                        onChange={(e) => updateSetting('allowPause', e.target.checked)}
+                        className="w-4 h-4 accent-blue-600 rounded"
                       />
-                      <span>Exibir seletor de velocidade (1.25x / 1.5x)</span>
+                      <span>Permitir pausar ao clicar na tela (aciona ThumbSniper)</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1007,7 +959,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                         type="checkbox"
                         checked={formData.settings.hideControls}
                         onChange={(e) => updateSetting('hideControls', e.target.checked)}
-                        className="w-4 h-4 accent-rose-600 rounded"
+                        className="w-4 h-4 accent-blue-600 rounded"
                       />
                       <span>Ocultar até mesmo a barra de progresso (Vídeo 100% limpo)</span>
                     </label>
@@ -1016,44 +968,44 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               </div>
             )}
 
-            {/* TAB CONTENT: CTA Button */}
+            {/* 6. BOTÕES DE AÇÃO */}
             {activeTab === 'cta' && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-3">
-                  <h4 className="text-xs font-bold text-emerald-950">Configuração do Botão de Compra da PV</h4>
+                  <h4 className="text-xs font-bold text-emerald-950">Botão de Compra da Página de Vendas</h4>
                   <p className="text-[11px] text-emerald-800">
-                    Defina o link e texto para gerar o botão pronto para colar na sua página.
+                    Gera o código do botão pulsante pronto para colar na sua PV abaixo do vídeo.
                   </p>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700">Texto Principal do Botão</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Texto Principal do Botão</label>
                       <input
                         type="text"
                         value={formData.settings.ctaText}
                         onChange={(e) => updateSetting('ctaText', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 font-bold"
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 font-bold bg-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700">Texto Abaixo do Botão (Garantia)</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Texto de Garantia / Segurança</label>
                       <input
                         type="text"
                         value={formData.settings.ctaSubtext}
                         onChange={(e) => updateSetting('ctaSubtext', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500"
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 bg-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700">Link de Checkout / Compra</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Link de Checkout / Compra</label>
                       <input
                         type="url"
                         value={formData.settings.ctaUrl}
                         onChange={(e) => updateSetting('ctaUrl', e.target.value)}
                         placeholder="https://pay.kiwify.com.br/..."
-                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 font-mono"
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 font-mono bg-white"
                       />
                     </div>
                   </div>
@@ -1061,22 +1013,22 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               </div>
             )}
 
-            {/* TAB CONTENT: Security */}
+            {/* 7. SEGURANÇA & DRM */}
             {activeTab === 'security' && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Anti-Download & Bloqueio de Botão Direito</h4>
                       <p className="text-[11px] text-slate-500">
-                        Impede que usuários façam download do vídeo ou inspecionem elementos.
+                        Impede que visitantes façam download do vídeo ou inspecionem elementos no código.
                       </p>
                     </div>
                     <input
                       type="checkbox"
                       checked={formData.settings.antiDownload}
                       onChange={(e) => updateSetting('antiDownload', e.target.checked)}
-                      className="w-5 h-5 accent-rose-600 rounded cursor-pointer"
+                      className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
                     />
                   </div>
                 </div>
@@ -1086,14 +1038,14 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                     Trava de Domínio (Domain Lock)
                   </label>
                   <p className="text-[11px] text-slate-500">
-                    Permite que o player seja exibido apenas nos seus sites oficiais. Digite separados por vírgula.
+                    Permite que o player seja exibido apenas nos seus domínios autorizados.
                   </p>
                   <input
                     type="text"
                     value={formData.settings.domainLock}
                     onChange={(e) => updateSetting('domainLock', e.target.value)}
                     placeholder="meusite.com.br, checkout.meusite.com.br"
-                    className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white"
                   />
                 </div>
               </div>
@@ -1101,49 +1053,66 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
 
           </div>
 
-          {/* RIGHT COLUMN: Live Interactive Player Preview */}
-          <div className="lg:col-span-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-rose-600" />
-                Pré-visualização em Tempo Real
-              </span>
-              <span className="text-[11px] text-slate-500">
-                Pitch: {formatTime(formData.settings.pitchDelaySeconds || 0)}
-              </span>
-            </div>
-
-            <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 shadow-inner">
-              <VideoPlayer
-                video={formData}
-                isSimulatedSalesPage={true}
-                forceShowResumePrompt={previewResumePrompt}
-              />
-            </div>
-
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1 text-slate-600">
-              <div className="flex justify-between">
-                <span>Duração Total:</span>
-                <strong className="font-mono">{formatTime(formData.duration)}</strong>
+          {/* PANE 3: Right Column Live Interactive Player Preview (matching image_fbf8f9ed.png) */}
+          <div className="w-full lg:w-[450px] border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50/50 p-5 shrink-0 flex flex-col justify-between overflow-y-auto space-y-4">
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-rose-600" />
+                  Pré-visualização em Tempo Real
+                </span>
+                <span className="text-[11px] text-slate-500 font-mono">
+                  Pitch: {formatTime(formData.settings.pitchDelaySeconds || 0)}
+                </span>
               </div>
-              <div className="flex justify-between">
+
+              {/* The Player with live active overlay */}
+              <div className="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 shadow-2xl relative">
+                <VideoPlayer
+                  video={formData}
+                  isSimulatedSalesPage={true}
+                  previewMode={previewMode}
+                />
+              </div>
+
+              {/* Current Preview Status Indicator */}
+              <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0" />
+                <span className="font-semibold text-[11px]">
+                  {activeTab === 'autoplay' && 'Pré-visualizando Smart Autoplay™ ao vivo'}
+                  {activeTab === 'progress' && 'Pré-visualizando Retomada Inteligente ao vivo'}
+                  {activeTab === 'thumbsniper' && 'Pré-visualizando ThumbSniper™ ao vivo'}
+                  {activeTab !== 'autoplay' && activeTab !== 'progress' && activeTab !== 'thumbsniper' && 'Pré-visualizando Player VSL em tempo real'}
+                </span>
+              </div>
+            </div>
+
+            {/* Video Stats Footer */}
+            <div className="p-3.5 bg-white border border-slate-200 rounded-xl text-xs space-y-1.5 text-slate-600 shadow-xs">
+              <div className="flex justify-between items-center">
+                <span>Duração Total:</span>
+                <strong className="font-mono text-slate-900">{formatTime(formData.duration)}</strong>
+              </div>
+              <div className="flex justify-between items-center">
                 <span>Pitch da Oferta:</span>
                 <strong className="font-mono text-rose-600">{formatTime(formData.settings.pitchDelaySeconds || 0)}</strong>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span>Retenção Estimada:</span>
                 <strong className="font-mono text-emerald-600">{formData.retentionAtPitch}%</strong>
               </div>
             </div>
+
           </div>
 
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
           >
             Cancelar
           </button>
@@ -1151,7 +1120,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleSave}
-              className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition-transform active:scale-95"
+              className="px-6 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-transform active:scale-95 cursor-pointer"
             >
               Salvar Alterações
             </button>
@@ -1160,7 +1129,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
 
       </div>
 
-      {/* ThumbSniper Dedicated Modal (matching image_217ed8ff.png, image_f3ee47eb.png, image_3d394116.png) */}
+      {/* ThumbSniper Dedicated Modal if requested */}
       {showThumbSniperModal && (
         <ThumbSniperModal
           isOpen={showThumbSniperModal}

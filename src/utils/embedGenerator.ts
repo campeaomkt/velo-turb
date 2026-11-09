@@ -15,6 +15,8 @@ export function generateSmartPlayerEmbed(video: VideoItem): string {
     ? 'background: #E11D48; color: #FFFFFF;'
     : settings.smartAutoplayTheme === 'purple'
     ? 'background: #8B5CF6; color: #FFFFFF;'
+    : settings.smartAutoplayTheme === 'green'
+    ? 'background: #65A30D; color: #FFFFFF;'
     : 'background: #0F172A; color: #FFFFFF;';
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.veloturb.com';

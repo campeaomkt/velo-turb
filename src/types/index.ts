@@ -2,7 +2,7 @@ export interface PlayerSettings {
   primaryColor: string;
   smartAutoplay: boolean;
   smartAutoplayText: string;
-  smartAutoplayTheme: 'yellow' | 'black' | 'red' | 'purple';
+  smartAutoplayTheme: 'yellow' | 'black' | 'red' | 'purple' | 'green';
   smartAutoplayShape?: 'pill' | 'square' | 'rounded' | 'two_lines' | 'full_width' | 'minimal';
   smartAutoplayPosition?: 'top' | 'center' | 'bottom' | 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right';
   smartAutoplayOpacity?: number; // 20 to 100

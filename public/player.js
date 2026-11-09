@@ -201,7 +201,8 @@
       yellow: { bg: '#FACC15', color: '#000000' },
       black: { bg: '#09090B', color: '#FFFFFF' },
       red: { bg: '#E11D48', color: '#FFFFFF' },
-      purple: { bg: '#8B5CF6', color: '#FFFFFF' }
+      purple: { bg: '#8B5CF6', color: '#FFFFFF' },
+      green: { bg: '#65A30D', color: '#FFFFFF' }
     }[smartAutoplayTheme] || { bg: '#FACC15', color: '#000000' };
 
     // Autoplay Banner Layout & Position Styles

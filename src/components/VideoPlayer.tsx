@@ -11,6 +11,7 @@ interface VideoPlayerProps {
   isSimulatedSalesPage?: boolean;
   className?: string;
   forceShowResumePrompt?: boolean; // Permite pré-visualizar o card no editor
+  previewMode?: 'normal' | 'autoplay' | 'resume' | 'thumbsniper';
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -19,6 +20,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   isSimulatedSalesPage = false,
   className = '',
   forceShowResumePrompt = false,
+  previewMode = 'normal',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -369,7 +371,8 @@ const handleResumeRestart = () => {
     black: 'bg-slate-950 text-white shadow-black/50 border border-slate-700',
     red: 'bg-rose-600 text-white shadow-rose-600/40',
     purple: 'bg-violet-600 text-white shadow-violet-600/40',
-  }[video.settings.smartAutoplayTheme || 'yellow'];
+    green: 'bg-[#65a30d] text-white shadow-lime-600/40 border border-[#84cc16]',
+  }[video.settings.smartAutoplayTheme || 'yellow'] || 'bg-amber-400 text-slate-950 shadow-amber-500/30';
 
   const autoplayPositionClass = (() => {
     switch (video.settings.smartAutoplayPosition) {
@@ -413,6 +416,10 @@ const handleResumeRestart = () => {
     opacity: (video.settings.smartAutoplayOpacity ?? 100) / 100,
   };
 
+  const effectiveShowResume = previewMode === 'resume' || (previewMode === 'normal' && (forceShowResumePrompt || showResumePrompt));
+  const effectiveShowAutoplay = previewMode === 'autoplay' || (previewMode === 'normal' && showAutoplayBanner && !effectiveShowResume);
+  const effectiveShowThumbSniper = previewMode === 'thumbsniper' || (previewMode === 'normal' && !isPlaying && !effectiveShowAutoplay && !effectiveShowResume && (video.settings.thumbSniper?.enabled ?? true));
+
   return (
     <div
       ref={containerRef}
@@ -423,8 +430,8 @@ const handleResumeRestart = () => {
       onMouseLeave={() => setShowControls(false)}
       className={`relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl select-none group ${className}`}
     >
-      {/* Resume Playback Prompt Overlay (matching image_8f1ffac5.png in PT and ES) */}
-      {showResumePrompt && (
+      {/* Resume Playback Prompt Overlay (matching image_8f1ffac5.png and image_fbf8f9ed.png) */}
+      {effectiveShowResume && (
         <ResumePlaybackOverlay
           language={video.settings.resumePlaybackLanguage || 'pt'}
           customTitle={video.settings.resumePlaybackTitle}
@@ -437,7 +444,7 @@ const handleResumeRestart = () => {
       )}
 
       {/* Smart Autoplay Banner Overlay (only when resume prompt is NOT active) */}
-      {showAutoplayBanner && !showResumePrompt && (
+      {effectiveShowAutoplay && (
         <div className={`absolute z-30 flex px-4 pointer-events-auto ${autoplayPositionClass}`}>
           <button
             type="button"
@@ -506,27 +513,25 @@ const handleResumeRestart = () => {
         </div>
       )}
 
-      {/* Center Play Overlay OR ThumbSniper Overlay when paused */}
-      {!isPlaying && !showAutoplayBanner && !showResumePrompt && (
-        (video.settings.thumbSniper?.enabled ?? true) ? (
-          <ThumbSniperOverlay
-            settings={video.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }}
-            onResume={handleVideoClick}
-          />
-        ) : (
+      {/* Center Play Overlay OR ThumbSniper Overlay */}
+      {effectiveShowThumbSniper ? (
+        <ThumbSniperOverlay
+          settings={video.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }}
+          onResume={handleVideoClick}
+        />
+      ) : !isPlaying && !effectiveShowAutoplay && !effectiveShowResume ? (
+        <div
+          onClick={handleVideoClick}
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 cursor-pointer backdrop-blur-[2px] transition-opacity"
+        >
           <div
-            onClick={handleVideoClick}
-            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 cursor-pointer backdrop-blur-[2px] transition-opacity"
+            style={{ backgroundColor: primaryColor }}
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white shadow-2xl transition-transform hover:scale-110 active:scale-95"
           >
-            <div
-              style={{ backgroundColor: primaryColor }}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white shadow-2xl transition-transform hover:scale-110 active:scale-95"
-            >
-              <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
-            </div>
+            <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
           </div>
-        )
-      )}
+        </div>
+      ) : null}
 
       {/* Standard Bottom Controls Bar */}
       {!isProfessionalVSL && !useBunnyEmbedFallback && !showResumePrompt && (
