@@ -371,6 +371,48 @@ const handleResumeRestart = () => {
     purple: 'bg-violet-600 text-white shadow-violet-600/40',
   }[video.settings.smartAutoplayTheme || 'yellow'];
 
+  const autoplayPositionClass = (() => {
+    switch (video.settings.smartAutoplayPosition) {
+      case 'center':
+        return 'inset-0 items-center justify-center';
+      case 'bottom':
+        return 'bottom-8 inset-x-0 justify-center';
+      case 'top_left':
+        return 'top-4 left-4 justify-start';
+      case 'top_right':
+        return 'top-4 right-4 justify-end';
+      case 'bottom_left':
+        return 'bottom-8 left-4 justify-start';
+      case 'bottom_right':
+        return 'bottom-8 right-4 justify-end';
+      case 'top':
+      default:
+        return 'top-4 inset-x-0 justify-center';
+    }
+  })();
+
+  const autoplayShapeClass = (() => {
+    switch (video.settings.smartAutoplayShape) {
+      case 'square':
+        return 'rounded-none px-6 py-3';
+      case 'rounded':
+        return 'rounded-xl px-5 py-2.5';
+      case 'two_lines':
+        return 'rounded-2xl px-6 py-3 flex-col text-center';
+      case 'full_width':
+        return 'rounded-none w-full max-w-full px-6 py-3 justify-center';
+      case 'minimal':
+        return 'rounded-lg px-3.5 py-1.5 text-xs';
+      case 'pill':
+      default:
+        return 'rounded-full px-5 py-2.5';
+    }
+  })();
+
+  const autoplayOpacityStyle = {
+    opacity: (video.settings.smartAutoplayOpacity ?? 100) / 100,
+  };
+
   return (
     <div
       ref={containerRef}
@@ -396,17 +438,25 @@ const handleResumeRestart = () => {
 
       {/* Smart Autoplay Banner Overlay (only when resume prompt is NOT active) */}
       {showAutoplayBanner && !showResumePrompt && (
-        <div className="absolute top-4 inset-x-0 z-30 flex justify-center px-4 pointer-events-auto">
+        <div className={`absolute z-30 flex px-4 pointer-events-auto ${autoplayPositionClass}`}>
           <button
             type="button"
             onClick={handleUnmuteClick}
-            className={`px-5 py-2.5 rounded-full font-extrabold text-xs sm:text-sm flex items-center gap-2.5 shadow-2xl transition-transform active:scale-95 animate-bounce cursor-pointer tracking-tight ${bannerThemeClasses}`}
+            style={autoplayOpacityStyle}
+            className={`font-extrabold text-xs sm:text-sm flex items-center gap-2.5 shadow-2xl transition-transform active:scale-95 animate-bounce cursor-pointer tracking-tight ${bannerThemeClasses} ${autoplayShapeClass}`}
           >
-            <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.5]" />
-            <span className="whitespace-nowrap font-extrabold">
-              {video.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}
-            </span>
-            <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.5]" />
+            <div className="flex items-center gap-2">
+              <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.5]" />
+              <span className="whitespace-nowrap font-extrabold">
+                {video.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}
+              </span>
+              <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.5]" />
+            </div>
+            {video.settings.smartAutoplayShape === 'two_lines' && (
+              <div className="text-[11px] opacity-90 font-medium">
+                {video.settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}
+              </div>
+            )}
           </button>
         </div>
       )}

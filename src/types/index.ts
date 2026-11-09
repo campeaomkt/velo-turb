@@ -3,6 +3,10 @@ export interface PlayerSettings {
   smartAutoplay: boolean;
   smartAutoplayText: string;
   smartAutoplayTheme: 'yellow' | 'black' | 'red' | 'purple';
+  smartAutoplayShape?: 'pill' | 'square' | 'rounded' | 'two_lines' | 'full_width' | 'minimal';
+  smartAutoplayPosition?: 'top' | 'center' | 'bottom' | 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right';
+  smartAutoplayOpacity?: number; // 20 to 100
+  smartAutoplaySubtext?: string; // Subtexto para modelo de duas linhas
   fakeProgressBar: boolean;
   fakeProgressSpeed: 'moderate' | 'fast';
   onlyProgressBar: boolean; // VSL standard: only shows bottom progress bar, hides play/pause/timestamps
@@ -31,6 +35,7 @@ export interface ThumbSniperSettings {
   name?: string;
   type: 'template' | 'custom';
   templateId?: string;
+  language?: 'pt' | 'es'; // Português ou Espanhol LATAM
   customMediaUrl?: string; // custom GIF or image
   headline?: string;
   subheadline?: string;

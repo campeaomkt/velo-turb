@@ -40,12 +40,15 @@ export const ThumbSniperModal: React.FC<ThumbSniperModalProps> = ({
     }
   };
 
+  const isSpanish = ['ts_05', 'ts_06', 'ts_07', 'ts_08'].includes(selectedTemplateId) || settings?.language === 'es';
+
   const handleSave = () => {
     const newConfig: ThumbSniperSettings = {
       enabled,
       name,
       type: appearanceType,
       templateId: selectedTemplateId,
+      language: isSpanish ? 'es' : 'pt',
       customMediaUrl: customMediaUrl.trim() || undefined,
       headline: currentTemplate.headline,
       subheadline: currentTemplate.subheadline,

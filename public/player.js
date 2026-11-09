@@ -60,6 +60,24 @@
     var inlineResume = container.getAttribute('data-resume') !== 'false';
     var inlineResumeLang = container.getAttribute('data-resume-lang') || 'pt';
 
+    var autoplayShape = container.getAttribute('data-autoplay-shape') || 'pill';
+    var autoplayPos = container.getAttribute('data-autoplay-pos') || 'top';
+    var autoplayOpacity = parseInt(container.getAttribute('data-autoplay-opacity') || '100', 10);
+    var autoplaySubtext = '';
+    try { autoplaySubtext = decodeURIComponent(container.getAttribute('data-autoplay-subtext') || ''); } catch (e) {}
+
+    var tsEnabled = container.getAttribute('data-thumbsniper-enabled') !== 'false';
+    var tsTemplate = container.getAttribute('data-thumbsniper-template') || 'ts_01';
+    var tsHeadline = '';
+    var tsSubheadline = '';
+    var tsButton = '';
+    try { tsHeadline = decodeURIComponent(container.getAttribute('data-thumbsniper-headline') || ''); } catch (e) {}
+    try { tsSubheadline = decodeURIComponent(container.getAttribute('data-thumbsniper-subheadline') || ''); } catch (e) {}
+    try { tsButton = decodeURIComponent(container.getAttribute('data-thumbsniper-button') || ''); } catch (e) {}
+    var tsColor = container.getAttribute('data-thumbsniper-color') || '#EF4444';
+    var tsCustom = container.getAttribute('data-thumbsniper-custom') || '';
+    var tsLang = container.getAttribute('data-thumbsniper-lang') || (inlineResumeLang === 'es' ? 'es' : 'pt');
+
     // Se o elemento já possui os atributos de mídia, renderiza IMEDIATAMENTE sem esperar API
     if (inlineSrc || inlineBunnyVideoId) {
       renderPlayer(container, {
@@ -74,10 +92,23 @@
         smartAutoplay: true,
         smartAutoplayText: container.getAttribute('data-autoplay-text') || 'Seu vídeo já começou! Clique para ouvir áudio',
         smartAutoplayTheme: container.getAttribute('data-autoplay-theme') || 'yellow',
+        smartAutoplayShape: autoplayShape,
+        smartAutoplayPosition: autoplayPos,
+        smartAutoplayOpacity: autoplayOpacity,
+        smartAutoplaySubtext: autoplaySubtext,
         resumePlayback: inlineResume,
         resumePlaybackLanguage: inlineResumeLang,
         onlyProgressBar: true,
-        thumbSniper: { enabled: true, templateId: 'ts_01' }
+        thumbSniper: {
+          enabled: tsEnabled,
+          templateId: tsTemplate,
+          headline: tsHeadline,
+          subheadline: tsSubheadline,
+          buttonText: tsButton,
+          buttonColor: tsColor,
+          customMediaUrl: tsCustom,
+          language: tsLang
+        }
       });
       return;
     }
@@ -117,6 +148,9 @@
           smartAutoplay: true,
           smartAutoplayText: 'Seu vídeo já começou! Clique para ouvir áudio',
           smartAutoplayTheme: 'yellow',
+          smartAutoplayShape: 'pill',
+          smartAutoplayPosition: 'top',
+          smartAutoplayOpacity: 100,
           resumePlayback: true,
           resumePlaybackLanguage: 'pt',
           onlyProgressBar: true,
@@ -130,6 +164,11 @@
     var primaryColor = config.primaryColor || (config.settings && config.settings.primaryColor) || '#E11D48';
     var smartAutoplayText = config.smartAutoplayText || (config.settings && config.settings.smartAutoplayText) || 'Seu vídeo já começou! Clique para ouvir áudio';
     var smartAutoplayTheme = config.smartAutoplayTheme || (config.settings && config.settings.smartAutoplayTheme) || 'yellow';
+    var smartAutoplayShape = config.smartAutoplayShape || (config.settings && config.settings.smartAutoplayShape) || 'pill';
+    var smartAutoplayPos = config.smartAutoplayPosition || (config.settings && config.settings.smartAutoplayPosition) || 'top';
+    var smartAutoplayOpacity = config.smartAutoplayOpacity !== undefined ? config.smartAutoplayOpacity : (config.settings && config.settings.smartAutoplayOpacity !== undefined ? config.settings.smartAutoplayOpacity : 100);
+    var smartAutoplaySubtext = config.smartAutoplaySubtext || (config.settings && config.settings.smartAutoplaySubtext) || '';
+
     var pitchDelay = config.pitchDelaySeconds || config.pitchDelay || (config.settings && config.settings.pitchDelaySeconds) || 500;
 
     var resumeEnabled = config.resumePlayback !== false && (config.settings ? config.settings.resumePlayback !== false : true);
@@ -142,6 +181,18 @@
       restartBtn: isSpanish ? '¿Ver desde el inicio?' : 'Assistir do início?'
     };
 
+    // ThumbSniper Settings & copy (Spanish vs Portuguese)
+    var tsObj = config.thumbSniper || (config.settings && config.settings.thumbSniper) || {};
+    var tsEnabled = tsObj.enabled !== false;
+    var tsLang = tsObj.language || (isSpanish ? 'es' : 'pt');
+    var isSpanishTs = tsLang === 'es' || ['ts_05', 'ts_06', 'ts_07', 'ts_08'].indexOf(tsObj.templateId || '') !== -1;
+
+    var tsHeadline = tsObj.headline || (isSpanishTs ? '¡Este video saldrá del aire pronto!' : 'Este vídeo ficará fora do ar em breve!');
+    var tsSubheadline = tsObj.subheadline || (isSpanishTs ? 'Esta es tu última oportunidad de verlo hasta el final.' : 'Essa é sua última chance de assistir até o final.');
+    var tsButtonText = tsObj.buttonText || (isSpanishTs ? 'CONTINUAR VIENDO' : 'CONTINUAR ASSISTINDO');
+    var tsButtonColor = tsObj.buttonColor || (isSpanishTs ? '#DC2626' : '#EF4444');
+    var tsCustomMedia = tsObj.customMediaUrl || '';
+
     var libraryId = config.bunnyLibraryId || '802485';
     var videoId = config.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7';
     var estimatedDuration = config.duration || 537;
@@ -152,6 +203,34 @@
       red: { bg: '#E11D48', color: '#FFFFFF' },
       purple: { bg: '#8B5CF6', color: '#FFFFFF' }
     }[smartAutoplayTheme] || { bg: '#FACC15', color: '#000000' };
+
+    // Autoplay Banner Layout & Position Styles
+    var posCss = '';
+    var isFullWidth = smartAutoplayShape === 'full_width';
+    switch (smartAutoplayPos) {
+      case 'center': posCss = 'top:50%;left:50%;transform:translate(-50%, -50%);'; break;
+      case 'bottom': posCss = 'bottom:22px;left:50%;transform:translateX(-50%);'; break;
+      case 'top_left': posCss = 'top:12px;left:14px;'; break;
+      case 'top_right': posCss = 'top:12px;right:14px;'; break;
+      case 'bottom_left': posCss = 'bottom:22px;left:14px;'; break;
+      case 'bottom_right': posCss = 'bottom:22px;right:14px;'; break;
+      case 'top':
+      default: posCss = 'top:12px;left:50%;transform:translateX(-50%);'; break;
+    }
+
+    var borderRadiusCss = 'border-radius:9999px;';
+    switch (smartAutoplayShape) {
+      case 'square': borderRadiusCss = 'border-radius:0px;'; break;
+      case 'rounded': borderRadiusCss = 'border-radius:12px;'; break;
+      case 'two_lines': borderRadiusCss = 'border-radius:14px;'; break;
+      case 'full_width': borderRadiusCss = 'border-radius:0px;'; break;
+      case 'minimal': borderRadiusCss = 'border-radius:8px;'; break;
+    }
+
+    var paddingCss = smartAutoplayShape === 'two_lines' ? 'padding:12px 24px;' : (smartAutoplayShape === 'minimal' ? 'padding:7px 15px;' : 'padding:10px 22px;');
+    var widthCss = isFullWidth ? 'width:100%;max-width:100%;left:0;transform:none;' : 'max-width:92%;';
+    var opacityCss = 'opacity:' + (smartAutoplayOpacity / 100) + ';';
+    var flexDirCss = smartAutoplayShape === 'two_lines' ? 'flex-direction:column;' : '';
 
     // Estilos de isolamento total do container: NUNCA quebra o layout da página
     container.style.display = 'block';
@@ -196,11 +275,14 @@
     // Renderiza Player com suporte dual + Card Laranja de Retomada Inteligente (image_8f1ffac5.png)
     container.innerHTML =
       '<div id="' + instanceId + '-box" style="position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;clear:both;">' +
-        // Smart Autoplay Banner
-        '<div id="' + instanceId + '-unmute" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';padding:10px 22px;border-radius:9999px;font-weight:800;font-size:13.5px;align-items:center;justify-content:center;gap:9px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;white-space:nowrap;max-width:92%;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;">' +
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' +
-          '<span style="font-weight:800;letter-spacing:-0.2px;">' + smartAutoplayText + '</span>' +
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' +
+        // Smart Autoplay Banner com Posicionamento, Formato e Opacidade customizáveis
+        '<div id="' + instanceId + '-unmute" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;' + posCss + widthCss + opacityCss + flexDirCss + 'z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';' + paddingCss + borderRadiusCss + 'font-weight:800;font-size:13.5px;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;white-space:nowrap;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;">' +
+          '<div style="display:flex;align-items:center;justify-content:center;gap:8px;">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' +
+            '<span style="font-weight:800;letter-spacing:-0.2px;">' + smartAutoplayText + '</span>' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' +
+          '</div>' +
+          (smartAutoplayShape === 'two_lines' ? '<div style="font-size:11px;opacity:0.92;font-weight:600;margin-top:2px;">' + (smartAutoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')) + '</div>' : '') +
         '</div>' +
 
         // Card Laranja de Retomada Inteligente (Exatamente o modelo VTurb de image_8f1ffac5.png)
@@ -250,14 +332,15 @@
         // Camada transparente interceptadora de cliques no vídeo e iframe
         '<div id="' + instanceId + '-click-capture" style="position:absolute;inset:0;z-index:20;cursor:pointer;"></div>' +
 
-        // ThumbSniper Overlay
+        // ThumbSniper Overlay (Com textos em Espanhol ou Português reais salvos na configuração)
         '<div id="' + instanceId + '-thumbsniper" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:45;align-items:center;justify-content:center;padding:15px;cursor:pointer;text-align:center;">' +
           '<div style="background:#09090b;border:1px solid #27272a;border-radius:14px;padding:22px 18px;max-width:360px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.8);">' +
+            (tsCustomMedia ? '<img src="' + tsCustomMedia + '" style="max-width:100%;max-height:220px;border-radius:10px;margin-bottom:12px;object-fit:contain;" />' : '') +
             '<div style="font-size:28px;margin-bottom:8px;">✋</div>' +
-            '<h4 style="color:#ffffff;font-size:15px;font-weight:800;text-transform:uppercase;margin:0 0 6px 0;line-height:1.2;">Este vídeo ficará fora do ar em breve!</h4>' +
-            '<p style="color:#a1a1aa;font-size:12px;margin:0 0 16px 0;">Essa é sua última chance de assistir até o final.</p>' +
+            '<h4 style="color:#ffffff;font-size:15px;font-weight:800;text-transform:uppercase;margin:0 0 6px 0;line-height:1.2;">' + tsHeadline + '</h4>' +
+            '<p style="color:#a1a1aa;font-size:12px;margin:0 0 16px 0;">' + tsSubheadline + '</p>' +
             '<div style="position:relative;display:inline-block;width:100%;">' +
-              '<button style="width:100%;background:#ef4444;color:#ffffff;font-weight:800;font-size:13px;text-transform:uppercase;padding:12px;border-radius:10px;border:none;cursor:pointer;box-shadow:0 4px 15px rgba(239,68,68,0.5);">CONTINUAR ASSISTINDO</button>' +
+              '<button style="width:100%;background:' + tsButtonColor + ';color:#ffffff;font-weight:800;font-size:13px;text-transform:uppercase;padding:12px;border-radius:10px;border:none;cursor:pointer;box-shadow:0 4px 15px rgba(239,68,68,0.5);">' + tsButtonText + '</button>' +
               '<div style="position:absolute;bottom:-8px;right:20px;font-size:28px;animation:vtTap 1.2s infinite ease-in-out;pointer-events:none;">👆</div>' +
             '</div>' +
           '</div>' +
@@ -274,7 +357,7 @@
       styleEl.id = 'veloturb-keyframes';
       styleEl.innerHTML =
         '@keyframes vtTap { 0%{transform:translateY(0) scale(1);} 30%{transform:translateY(-8px) scale(1.1);} 50%{transform:translateY(2px) scale(0.92);} 70%{transform:translateY(-4px) scale(1.05);} 100%{transform:translateY(0) scale(1);} }' +
-        '@keyframes vtPulse { 0%,100%{transform:translateX(-50%) scale(1);} 50%{transform:translateX(-50%) scale(1.03);box-shadow:0 6px 22px rgba(0,0,0,0.5);} }';
+        '@keyframes vtPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.03);box-shadow:0 6px 22px rgba(0,0,0,0.5);} }';
       document.head.appendChild(styleEl);
     }
 

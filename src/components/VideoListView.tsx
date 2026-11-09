@@ -106,17 +106,16 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
 
     // Inside a specific folder
     if (isInsideFolder) {
-      return v.folderId === currentFolder.id;
-    }
-
-    // In Root Library view: Show root videos (where folderId === 'all' or empty, or all videos if no folder)
-    if (subTab === 'library') {
-      // If user clicked a specific folder in sidebar, filter to that
+      if (v.folderId !== currentFolder.id) return false;
+    } else if (subTab === 'library') {
       if (activeFolderId !== 'all') {
-        return v.folderId === activeFolderId;
+        if (v.folderId !== activeFolderId) return false;
+      } else {
+        // At root Biblioteca: only show root videos (folderId === 'all', empty, or root).
+        // Videos assigned to a folder ONLY appear inside that folder!
+        const isInSpecificFolder = v.folderId && v.folderId !== 'all' && v.folderId !== 'root';
+        if (isInSpecificFolder) return false;
       }
-      // When at root Biblioteca, show videos that are in root
-      // (folders are shown at the top of the table as folder rows, matching image_3cb5e0ce.png!)
     }
 
     // Search query filter

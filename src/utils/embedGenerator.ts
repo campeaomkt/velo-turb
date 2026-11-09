@@ -34,17 +34,34 @@ export function generateSmartPlayerEmbed(video: VideoItem): string {
     
     <!-- Smart Autoplay Banner (Clique para Ativar Áudio) -->
     ${settings.smartAutoplay ? `
-    <div id="veloturb-unmute-${video.id}" style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 40; ${autoplayBannerTheme} padding: 10px 22px; border-radius: 9999px; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 9px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); animation: veloturbPulse 2s infinite; text-align: center; white-space: nowrap;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-        <line x1="23" y1="9" x2="17" y2="15"></line>
-        <line x1="17" y1="9" x2="23" y2="15"></line>
-      </svg>
-      <span style="font-weight: 800;">${settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}</span>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-      </svg>
+    <div id="veloturb-unmute-${video.id}" style="position: absolute; ${
+      settings.smartAutoplayPosition === 'center' ? 'top: 50%; left: 50%; transform: translate(-50%, -50%);' :
+      settings.smartAutoplayPosition === 'bottom' ? 'bottom: 24px; left: 50%; transform: translateX(-50%);' :
+      settings.smartAutoplayPosition === 'top_left' ? 'top: 14px; left: 16px;' :
+      settings.smartAutoplayPosition === 'top_right' ? 'top: 14px; right: 16px;' :
+      settings.smartAutoplayPosition === 'bottom_left' ? 'bottom: 24px; left: 16px;' :
+      settings.smartAutoplayPosition === 'bottom_right' ? 'bottom: 24px; right: 16px;' :
+      'top: 14px; left: 50%; transform: translateX(-50%);'
+    } ${settings.smartAutoplayShape === 'full_width' ? 'width: 100%; max-width: 100%; left: 0; transform: none;' : 'max-width: 92%;'} z-index: 40; opacity: ${(settings.smartAutoplayOpacity ?? 100) / 100}; ${autoplayBannerTheme} padding: ${settings.smartAutoplayShape === 'two_lines' ? '12px 24px' : '10px 22px'}; border-radius: ${
+      settings.smartAutoplayShape === 'square' ? '0px' :
+      settings.smartAutoplayShape === 'rounded' ? '12px' :
+      settings.smartAutoplayShape === 'two_lines' ? '14px' :
+      settings.smartAutoplayShape === 'full_width' ? '0px' :
+      settings.smartAutoplayShape === 'minimal' ? '8px' : '9999px'
+    }; font-weight: 800; font-size: 14px; display: flex; ${settings.smartAutoplayShape === 'two_lines' ? 'flex-direction: column;' : ''} align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; white-space: nowrap;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+        <span style="font-weight: 800;">${settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+      </div>
+      ${settings.smartAutoplayShape === 'two_lines' ? `<div style="font-size: 11px; opacity: 0.92; font-weight: 600;">${settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}</div>` : ''}
     </div>
     ` : ''}
 

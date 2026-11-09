@@ -251,48 +251,209 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                   </div>
 
                   {formData.settings.smartAutoplay && (
-                    <div className="pt-2 border-t border-slate-200 space-y-2">
-                      <label className="block text-[11px] font-semibold text-slate-700">
-                        Texto da Faixa de Som
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.settings.smartAutoplayText}
-                        onChange={(e) => updateSetting('smartAutoplayText', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-rose-500 font-bold"
-                      />
-
-                      {/* Presets */}
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {[
-                          'Seu vídeo já começou! Clique para ouvir áudio',
-                          'ATENÇÃO: Clique para ouvir com som 🔊',
-                          'O áudio está mutado. Clique para ativar o som',
-                          'Assista com som antes que saia do ar! 🔊',
-                        ].map((preset) => (
-                          <button
-                            key={preset}
-                            type="button"
-                            onClick={() => updateSetting('smartAutoplayText', preset)}
-                            className={`text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                              formData.settings.smartAutoplayText === preset
-                                ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            {preset}
-                          </button>
-                        ))}
+                    <div className="pt-3 border-t border-slate-200 space-y-4">
+                      
+                      {/* Model / Shape Chooser (image_17189bc4.png request) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>🎨 Modelo & Formato do Autoplay:</span>
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-medium">6 opções visuais</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {([
+                            { id: 'pill', name: 'Pílula (Clássico)', desc: 'Bordas 100% arredondadas' },
+                            { id: 'square', name: 'Quadrado Reto', desc: 'Cantos retos modernos' },
+                            { id: 'rounded', name: 'Cantos Suaves', desc: 'Bordas levemente curvas' },
+                            { id: 'two_lines', name: 'Duas Linhas', desc: 'Título + Instrução de som' },
+                            { id: 'full_width', name: 'Faixa Completa', desc: '100% largura do vídeo' },
+                            { id: 'minimal', name: 'Mini Badge', desc: 'Discreto e compacto' },
+                          ] as const).map((shape) => {
+                            const isSelected = (formData.settings.smartAutoplayShape || 'pill') === shape.id;
+                            return (
+                              <button
+                                key={shape.id}
+                                type="button"
+                                onClick={() => updateSetting('smartAutoplayShape', shape.id)}
+                                className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-rose-50/80 border-rose-500 text-rose-950 ring-1 ring-rose-500/20 shadow-xs'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="text-[11px] font-bold flex items-center justify-between">
+                                  <span>{shape.name}</span>
+                                  {isSelected && <span className="text-rose-600 font-black">✓</span>}
+                                </div>
+                                <div className="text-[9.5px] text-slate-500 mt-0.5 line-clamp-1">{shape.desc}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
+                      {/* Position Grid Chooser */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>📍 Posição no Vídeo:</span>
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {formData.settings.smartAutoplayPosition || 'top'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
+                          {([
+                            { id: 'top', label: 'Topo Centro' },
+                            { id: 'center', label: 'Centro' },
+                            { id: 'bottom', label: 'Inferior' },
+                            { id: 'top_left', label: 'Topo Esq.' },
+                            { id: 'top_right', label: 'Topo Dir.' },
+                            { id: 'bottom_left', label: 'Inf. Esq.' },
+                            { id: 'bottom_right', label: 'Inf. Dir.' },
+                          ] as const).map((pos) => {
+                            const isSelected = (formData.settings.smartAutoplayPosition || 'top') === pos.id;
+                            return (
+                              <button
+                                key={pos.id}
+                                type="button"
+                                onClick={() => updateSetting('smartAutoplayPosition', pos.id)}
+                                className={`py-1.5 px-2 rounded-lg border text-[10px] font-bold text-center transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                {pos.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Opacity Control (Slider & Fast Buttons) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>👁️ Opacidade do Banner:</span>
+                          </label>
+                          <span className="text-xs font-mono font-bold text-rose-600">
+                            {formData.settings.smartAutoplayOpacity ?? 100}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="20"
+                            max="100"
+                            step="5"
+                            value={formData.settings.smartAutoplayOpacity ?? 100}
+                            onChange={(e) => updateSetting('smartAutoplayOpacity', parseInt(e.target.value, 10))}
+                            className="flex-1 accent-rose-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                          />
+                          <div className="flex items-center gap-1">
+                            {[100, 90, 80, 70, 50].map((val) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => updateSetting('smartAutoplayOpacity', val)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                                  (formData.settings.smartAutoplayOpacity ?? 100) === val
+                                    ? 'bg-rose-100 border-rose-400 text-rose-700'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                {val}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Headline Text */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Texto Principal da Faixa de Som
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.settings.smartAutoplayText}
+                          onChange={(e) => updateSetting('smartAutoplayText', e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-rose-500 font-bold"
+                        />
+                      </div>
+
+                      {/* Optional Subtext for two_lines model */}
+                      {(formData.settings.smartAutoplayShape === 'two_lines') && (
+                        <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+                          <label className="block text-[11px] font-bold text-amber-950">
+                            Segunda Linha (Instrução de Ação para o Lead):
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}
+                            onChange={(e) => updateSetting('smartAutoplaySubtext', e.target.value)}
+                            placeholder="Ex: Clique aqui para ativar o áudio agora 🔊"
+                            className="w-full px-3 py-1.5 text-xs border border-amber-300 rounded-lg bg-white focus:ring-1 focus:ring-amber-500 font-medium"
+                          />
+                          <div className="flex flex-wrap gap-1">
+                            {[
+                              'Clique aqui para ativar o áudio 🔊',
+                              'Toque na tela para ouvir agora 🔊',
+                              'Haz clic para escuchar el audio 🔊',
+                              'Toca para escuchar con volumen alto 🔊',
+                            ].map((subPreset) => (
+                              <button
+                                key={subPreset}
+                                type="button"
+                                onClick={() => updateSetting('smartAutoplaySubtext', subPreset)}
+                                className="text-[9.5px] px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 hover:bg-amber-100/50 cursor-pointer"
+                              >
+                                {subPreset}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Presets PT & ES */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Modelos Prontos de Frases (PT / ES):</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            'Seu vídeo já começou! Clique para ouvir áudio',
+                            'ATENÇÃO: Clique para ouvir com som 🔊',
+                            '¡Tu video ya comenzó! Haz clic para escuchar el audio 🔊',
+                            'ATENCIÓN: Haz clic para escuchar con audio 🔊',
+                            'O áudio está mutado. Clique para ativar o som',
+                            'Assista com som antes que saia do ar! 🔊',
+                          ].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => updateSetting('smartAutoplayText', preset)}
+                              className={`text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                                formData.settings.smartAutoplayText === preset
+                                  ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Color Theme */}
                       <div className="flex items-center gap-2 pt-1">
-                        <span className="text-[11px] text-slate-600">Cor da Faixa:</span>
+                        <span className="text-[11px] text-slate-600 font-semibold">Cor da Faixa:</span>
                         {(['yellow', 'black', 'red', 'purple'] as const).map((theme) => (
                           <button
                             key={theme}
                             type="button"
                             onClick={() => updateSetting('smartAutoplayTheme', theme)}
-                            className={`px-2.5 py-1 text-[11px] rounded font-bold capitalize transition-all ${
+                            className={`px-2.5 py-1 text-[11px] rounded font-bold capitalize transition-all cursor-pointer ${
                               formData.settings.smartAutoplayTheme === theme
                                 ? 'ring-2 ring-rose-500 ring-offset-1'
                                 : 'opacity-70 hover:opacity-100'
@@ -306,6 +467,48 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                           </button>
                         ))}
                       </div>
+
+                      {/* Live Preview Box of the Autoplay Banner */}
+                      <div className="p-3 bg-slate-950 rounded-xl space-y-1.5 border border-slate-800">
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                          <span>PRÉ-VISUALIZAÇÃO AO VIVO DO BANNER:</span>
+                          <span>Opacidade: {formData.settings.smartAutoplayOpacity ?? 100}%</span>
+                        </div>
+                        <div className="relative h-20 bg-slate-900 rounded-lg flex items-center justify-center overflow-hidden border border-slate-800/80">
+                          <div
+                            style={{
+                              opacity: (formData.settings.smartAutoplayOpacity ?? 100) / 100,
+                              backgroundColor:
+                                formData.settings.smartAutoplayTheme === 'black' ? '#09090B' :
+                                formData.settings.smartAutoplayTheme === 'red' ? '#E11D48' :
+                                formData.settings.smartAutoplayTheme === 'purple' ? '#8B5CF6' : '#FACC15',
+                              color: formData.settings.smartAutoplayTheme === 'yellow' ? '#000000' : '#FFFFFF',
+                              borderRadius:
+                                formData.settings.smartAutoplayShape === 'square' ? '0px' :
+                                formData.settings.smartAutoplayShape === 'rounded' ? '12px' :
+                                formData.settings.smartAutoplayShape === 'full_width' ? '0px' :
+                                formData.settings.smartAutoplayShape === 'two_lines' ? '14px' :
+                                formData.settings.smartAutoplayShape === 'minimal' ? '8px' : '9999px',
+                              width: formData.settings.smartAutoplayShape === 'full_width' ? '100%' : 'auto',
+                            }}
+                            className={`px-4 py-2 text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg ${
+                              formData.settings.smartAutoplayShape === 'two_lines' ? 'flex-col text-center py-2.5' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>🔇</span>
+                              <span>{formData.settings.smartAutoplayText || 'Seu vídeo já começou! Clique para ouvir áudio'}</span>
+                              <span>🔊</span>
+                            </div>
+                            {formData.settings.smartAutoplayShape === 'two_lines' && (
+                              <div className="text-[10.5px] opacity-90 font-medium">
+                                {formData.settings.smartAutoplaySubtext || 'Clique aqui para ativar o áudio 🔊'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   )}
                 </div>
@@ -512,17 +715,122 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                   </div>
                 </div>
 
+                {/* Language Selector for ThumbSniper (matching Resume Playback UX) */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1.5">
+                      Idioma dos Textos do ThumbSniper™:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' };
+                          updateSetting('thumbSniper', {
+                            ...current,
+                            enabled: true,
+                            language: 'pt',
+                            headline: 'Este vídeo ficará fora do ar em breve.',
+                            subheadline: 'Essa é sua última chance de assistir até o final.',
+                            buttonText: 'CONTINUAR ASSISTINDO',
+                            buttonColor: current.buttonColor || '#EF4444',
+                          });
+                        }}
+                        className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          (formData.settings.thumbSniper?.language || 'pt') === 'pt'
+                            ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/20'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>🇧🇷</span>
+                        <span>Português (Brasil)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_05' };
+                          updateSetting('thumbSniper', {
+                            ...current,
+                            enabled: true,
+                            language: 'es',
+                            headline: '¡Este video saldrá del aire pronto!',
+                            subheadline: 'Esta es tu última oportunidad de verlo hasta el final.',
+                            buttonText: 'CONTINUAR VIENDO',
+                            buttonColor: current.buttonColor || '#DC2626',
+                          });
+                        }}
+                        className={`p-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          formData.settings.thumbSniper?.language === 'es'
+                            ? 'bg-blue-50 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/20'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>🌎</span>
+                        <span>Español (LATAM)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Editable Text Fields for ThumbSniper */}
+                  <div className="pt-2 border-t border-slate-200 space-y-2.5">
+                    <div>
+                      <label className="block text-[10.5px] font-semibold text-slate-700 mb-0.5">Título / Chamada de Urgência:</label>
+                      <input
+                        type="text"
+                        value={formData.settings.thumbSniper?.headline || 'Este vídeo ficará fora do ar em breve.'}
+                        onChange={(e) => {
+                          updateSetting('thumbSniper', {
+                            ...(formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }),
+                            headline: e.target.value,
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-semibold text-slate-700 mb-0.5">Subtítulo de Alerta:</label>
+                      <input
+                        type="text"
+                        value={formData.settings.thumbSniper?.subheadline || 'Essa é sua última chance de assistir até o final.'}
+                        onChange={(e) => {
+                          updateSetting('thumbSniper', {
+                            ...(formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }),
+                            subheadline: e.target.value,
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-semibold text-slate-700 mb-0.5">Texto do Botão com Mãozinha 👆:</label>
+                      <input
+                        type="text"
+                        value={formData.settings.thumbSniper?.buttonText || 'CONTINUAR ASSISTINDO'}
+                        onChange={(e) => {
+                          updateSetting('thumbSniper', {
+                            ...(formData.settings.thumbSniper || { enabled: true, type: 'template', templateId: 'ts_01' }),
+                            buttonText: e.target.value,
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 text-xs font-black uppercase border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Templates Quick Chooser (with moving hand indicator) */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-bold text-slate-900">Templates Prontos de Alta Conversão</h5>
-                    <span className="text-[10px] text-slate-500 font-mono">8 templates disponíveis</span>
+                    <span className="text-[10px] text-slate-500 font-mono">8 templates disponíveis (PT e ES)</span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {THUMB_SNIPER_TEMPLATES.map((tmpl) => {
                       const isSelected = (formData.settings.thumbSniper?.templateId || 'ts_01') === tmpl.id;
                       const isYellow = tmpl.theme === 'yellow-alert';
+                      const isSpanishTmpl = ['ts_05', 'ts_06', 'ts_07', 'ts_08'].includes(tmpl.id);
 
                       return (
                         <div
@@ -533,6 +841,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
                               name: tmpl.name,
                               type: 'template',
                               templateId: tmpl.id,
+                              language: isSpanishTmpl ? 'es' : 'pt',
                               headline: tmpl.headline,
                               subheadline: tmpl.subheadline,
                               buttonText: tmpl.buttonText,

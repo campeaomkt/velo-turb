@@ -57,9 +57,50 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const isBlob = video.videoUrl?.startsWith('blob:');
   const isHls = videoSourceUrl.includes('.m3u8') || video.videoType === 'hls';
 
+  // Autoplay settings from video
+  const autoplayShape = video.settings.smartAutoplayShape || 'pill';
+  const autoplayPosition = video.settings.smartAutoplayPosition || 'top';
+  const autoplayOpacity = video.settings.smartAutoplayOpacity ?? 100;
+  const autoplaySubtext = video.settings.smartAutoplaySubtext || '';
+
+  // ThumbSniper settings
+  const tsConfig = video.settings.thumbSniper;
+  const isSpanishTs = tsConfig?.language === 'es' || ['ts_05', 'ts_06', 'ts_07', 'ts_08'].includes(tsConfig?.templateId || '') || video.settings.resumePlaybackLanguage === 'es';
+  const tsHeadline = tsConfig?.headline || (isSpanishTs ? '¡Este video saldrá del aire pronto!' : 'Este vídeo ficará fora do ar em breve!');
+  const tsSubheadline = tsConfig?.subheadline || (isSpanishTs ? 'Esta es tu última oportunidade de verlo hasta el final.' : 'Essa é sua última chance de assistir até o final.');
+  const tsButtonText = tsConfig?.buttonText || (isSpanishTs ? 'CONTINUAR VIENDO' : 'CONTINUAR ASSISTINDO');
+  const tsButtonColor = tsConfig?.buttonColor || '#EF4444';
+
+  const autoplayPosStyle = (() => {
+    switch (autoplayPosition) {
+      case 'center': return 'top: 50%; left: 50%; transform: translate(-50%, -50%);';
+      case 'bottom': return 'bottom: 24px; left: 50%; transform: translateX(-50%);';
+      case 'top_left': return 'top: 14px; left: 16px; transform: none;';
+      case 'top_right': return 'top: 14px; right: 16px; transform: none;';
+      case 'bottom_left': return 'bottom: 24px; left: 16px; transform: none;';
+      case 'bottom_right': return 'bottom: 24px; right: 16px; transform: none;';
+      case 'top':
+      default: return 'top: 14px; left: 50%; transform: translateX(-50%);';
+    }
+  })();
+
+  const autoplayBorderRadius = (() => {
+    switch (autoplayShape) {
+      case 'square': return '0px';
+      case 'rounded': return '12px';
+      case 'two_lines': return '14px';
+      case 'full_width': return '0px';
+      case 'minimal': return '8px';
+      case 'pill':
+      default: return '9999px';
+    }
+  })();
+
+  const isFullWidthAutoplay = autoplayShape === 'full_width';
+
   // Format 1: Ultra-clean short embed code com isolamento total para nunca quebrar botões ou layout flex da PV
   const shortEmbedCode = `<div style="display: block; width: 100%; max-width: 100%; margin: 0 auto 20px auto; clear: both; flex: 0 0 100%;">
-  <div id="veloturb-${video.id}" data-video-id="${video.id}" data-src="${videoSourceUrl}" data-type="${isHls ? 'hls' : 'mp4'}" data-bunny-library-id="${video.bunnyLibraryId || '802485'}" data-bunny-video-id="${video.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7'}" data-poster="${video.thumbnailUrl || ''}" data-pitch-delay="${video.settings.pitchDelaySeconds || 500}" data-primary-color="${primaryColor}" data-autoplay-text="${autoplayText}" data-autoplay-theme="${autoplayTheme}" data-resume="${video.settings.resumePlayback !== false ? 'true' : 'false'}" data-resume-lang="${video.settings.resumePlaybackLanguage || 'pt'}" style="display: block; width: 100%; max-width: 100%; margin: 0 auto; clear: both; position: relative;"></div>
+  <div id="veloturb-${video.id}" data-video-id="${video.id}" data-src="${videoSourceUrl}" data-type="${isHls ? 'hls' : 'mp4'}" data-bunny-library-id="${video.bunnyLibraryId || '802485'}" data-bunny-video-id="${video.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7'}" data-poster="${video.thumbnailUrl || ''}" data-pitch-delay="${video.settings.pitchDelaySeconds || 500}" data-primary-color="${primaryColor}" data-autoplay-text="${autoplayText}" data-autoplay-theme="${autoplayTheme}" data-autoplay-shape="${autoplayShape}" data-autoplay-pos="${autoplayPosition}" data-autoplay-opacity="${autoplayOpacity}" data-autoplay-subtext="${encodeURIComponent(autoplaySubtext)}" data-resume="${video.settings.resumePlayback !== false ? 'true' : 'false'}" data-resume-lang="${video.settings.resumePlaybackLanguage || 'pt'}" data-thumbsniper-enabled="${tsConfig?.enabled !== false ? 'true' : 'false'}" data-thumbsniper-template="${tsConfig?.templateId || 'ts_01'}" data-thumbsniper-headline="${encodeURIComponent(tsHeadline)}" data-thumbsniper-subheadline="${encodeURIComponent(tsSubheadline)}" data-thumbsniper-button="${encodeURIComponent(tsButtonText)}" data-thumbsniper-color="${tsButtonColor}" data-thumbsniper-custom="${tsConfig?.customMediaUrl || ''}" data-thumbsniper-lang="${isSpanishTs ? 'es' : 'pt'}" style="display: block; width: 100%; max-width: 100%; margin: 0 auto; clear: both; position: relative;"></div>
 </div>
 <script src="${origin}/player.js" async></script>`;
 
@@ -67,20 +108,23 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const inlineJsEmbedCode = `<veloturb-smartplayer id="vid-${video.id}" style="display: block; margin: 0 auto; width: 100%; max-width: 100%;">
   <div class="veloturb-player-placeholder" style="position: relative; width: 100%; padding-bottom: 56.25%; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
     
-    <!-- Smart Autoplay Unmute Hook (Com Ícones Duplos e Texto Editável) -->
-    <div id="veloturb-unmute-${video.id}" style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 40; background: ${bannerColors.bg}; color: ${bannerColors.text}; padding: 10px 22px; border-radius: 9999px; font-weight: 800; font-size: 14px; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; gap: 9px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; white-space: nowrap; max-width: 92%;">
-      <!-- Ícone Som Mudo (Esquerda) -->
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-        <line x1="23" y1="9" x2="17" y2="15"></line>
-        <line x1="17" y1="9" x2="23" y2="15"></line>
-      </svg>
-      <span style="font-weight: 800; letter-spacing: -0.2px;">${autoplayText}</span>
-      <!-- Ícone Som Ativo com Ondas (Direita) -->
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-      </svg>
+    <!-- Smart Autoplay Unmute Hook -->
+    <div id="veloturb-unmute-${video.id}" style="position: absolute; ${autoplayPosStyle} ${isFullWidthAutoplay ? 'width: 100%; max-width: 100%; left: 0; transform: none;' : 'max-width: 92%;'} z-index: 40; background: ${bannerColors.bg}; color: ${bannerColors.text}; opacity: ${autoplayOpacity / 100}; padding: ${autoplayShape === 'two_lines' ? '12px 24px' : '10px 22px'}; border-radius: ${autoplayBorderRadius}; font-weight: 800; font-size: 14px; font-family: system-ui, -apple-system, sans-serif; display: flex; ${autoplayShape === 'two_lines' ? 'flex-direction: column;' : ''} align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; white-space: nowrap;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <!-- Ícone Som Mudo (Esquerda) -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+        <span style="font-weight: 800; letter-spacing: -0.2px;">${autoplayText}</span>
+        <!-- Ícone Som Ativo com Ondas (Direita) -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+      </div>
+      ${autoplayShape === 'two_lines' ? `<div style="font-size: 11px; opacity: 0.92; font-weight: 600;">${autoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')}</div>` : ''}
     </div>
 
     <!-- Video Element -->
@@ -95,14 +139,14 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
       oncontextmenu="return false;"
     ></video>
 
-    <!-- ThumbSniper Pause Hook Overlay (Aparece ao Pausar o Vídeo com Mãozinha Animada) -->
+    <!-- ThumbSniper Pause Hook Overlay (com suporte real a Espanhol e Português) -->
     <div id="veloturb-thumbsniper-${video.id}" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 45; align-items: center; justify-content: center; padding: 15px; cursor: pointer; text-align: center; font-family: system-ui, sans-serif;">
       <div style="background: #09090b; border: 1px solid #27272a; border-radius: 14px; padding: 22px 18px; max-width: 360px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
         <div style="font-size: 28px; margin-bottom: 8px;">✋</div>
-        <h4 style="color: #fff; font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px 0; line-height: 1.2;">Este vídeo ficará fora do ar em breve!</h4>
-        <p style="color: #a1a1aa; font-size: 12px; margin: 0 0 16px 0;">Essa é sua última chance de assistir até o final.</p>
+        <h4 style="color: #fff; font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px 0; line-height: 1.2;">${tsHeadline}</h4>
+        <p style="color: #a1a1aa; font-size: 12px; margin: 0 0 16px 0;">${tsSubheadline}</p>
         <div style="position: relative; display: inline-block; width: 100%;">
-          <button style="width: 100%; background: #ef4444; color: #fff; font-weight: 800; font-size: 13px; text-transform: uppercase; padding: 12px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(239,68,68,0.5);">CONTINUAR ASSISTINDO</button>
+          <button style="width: 100%; background: ${tsButtonColor}; color: #fff; font-weight: 800; font-size: 13px; text-transform: uppercase; padding: 12px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(239,68,68,0.5);">${tsButtonText}</button>
           <div style="position: absolute; bottom: -8px; right: 20px; font-size: 28px; animation: veloturbTap 1.2s infinite ease-in-out; pointer-events: none;">👆</div>
         </div>
       </div>
@@ -113,7 +157,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
       <div id="veloturb-bar-${video.id}" style="height: 100%; width: 0%; background: ${primaryColor}; transition: width 0.15s linear;"></div>
     </div>
   </div>
-</div>
+</veloturb-smartplayer>
 
 <style>
 @keyframes veloturbTap {

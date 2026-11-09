@@ -97,6 +97,13 @@ export default function App() {
 
   const handleUpdateVideo = (updated: VideoItem) => {
     setVideos(videos.map((v) => (v.id === updated.id ? updated : v)));
+    try {
+      fetch(`/api/videos/${encodeURIComponent(updated.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      }).catch(() => {});
+    } catch (e) {}
   };
 
   const handleDeleteVideo = (id: string) => {
