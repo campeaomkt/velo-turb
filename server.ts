@@ -206,7 +206,9 @@ app.use(express.urlencoded({ extended: true }));
 const servePlayerJs = (_req: express.Request, res: express.Response) => {
   res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   const playerJsPath = path.join(__dirname, 'public', 'player.js');
   if (fs.existsSync(playerJsPath)) {
     return res.sendFile(playerJsPath);
