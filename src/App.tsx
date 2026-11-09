@@ -69,6 +69,14 @@ export default function App() {
   React.useEffect(() => {
     try {
       localStorage.setItem('veloturb_videos', JSON.stringify(videos));
+      // Sincroniza os vídeos com o backend para atualização em tempo real nas páginas externas
+      videos.forEach((vid) => {
+        fetch(`/api/videos/${encodeURIComponent(vid.id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(vid),
+        }).catch(() => {});
+      });
     } catch (e) {}
   }, [videos]);
 

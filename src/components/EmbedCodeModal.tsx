@@ -519,6 +519,12 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
                 className="w-full pr-8 text-xs font-mono text-slate-700 bg-transparent resize-none focus:outline-none select-all leading-relaxed"
               />
             </div>
+            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+              <p className="text-[11px] leading-snug">
+                <strong>Sincronização em Tempo Real Ativa:</strong> Você só precisa colar esse código <strong>uma única vez</strong> na sua página. Sempre que alterar cores, textos, autoplay, pitch ou ThumbSniper aqui no painel, sua página atualiza automaticamente sem você precisar recolar nada!
+              </p>
+            </div>
             {embedMode === 'short' && (
               <p className="text-[11px] text-slate-500">
                 ⭐ <strong>Formato recomendado:</strong> Carrega <code>player.js</code> assincronamente com suporte nativo a Bunny HLS e ThumbSniper.

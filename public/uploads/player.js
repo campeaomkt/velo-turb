@@ -78,42 +78,39 @@
     var tsCustom = container.getAttribute('data-thumbsniper-custom') || '';
     var tsLang = container.getAttribute('data-thumbsniper-lang') || (inlineResumeLang === 'es' ? 'es' : 'pt');
 
-    // Se o elemento já possui os atributos de mídia, renderiza IMEDIATAMENTE sem esperar API
-    if (inlineSrc || inlineBunnyVideoId) {
-      renderPlayer(container, {
-        id: videoId || 'vt_vsl_aevo_pro',
-        src: inlineSrc || 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/playlist.m3u8',
-        type: inlineType,
-        bunnyLibraryId: inlineLibraryId,
-        bunnyVideoId: inlineBunnyVideoId,
-        poster: inlinePoster,
-        pitchDelay: parseInt(container.getAttribute('data-pitch-delay') || '500', 10),
-        primaryColor: container.getAttribute('data-primary-color') || '#E11D48',
-        smartAutoplay: true,
-        smartAutoplayText: container.getAttribute('data-autoplay-text') || 'Seu vídeo já começou! Clique para ouvir áudio',
-        smartAutoplayTheme: container.getAttribute('data-autoplay-theme') || 'yellow',
-        smartAutoplayShape: autoplayShape,
-        smartAutoplayPosition: autoplayPos,
-        smartAutoplayOpacity: autoplayOpacity,
-        smartAutoplaySubtext: autoplaySubtext,
-        resumePlayback: inlineResume,
-        resumePlaybackLanguage: inlineResumeLang,
-        onlyProgressBar: true,
-        thumbSniper: {
-          enabled: tsEnabled,
-          templateId: tsTemplate,
-          headline: tsHeadline,
-          subheadline: tsSubheadline,
-          buttonText: tsButton,
-          buttonColor: tsColor,
-          customMediaUrl: tsCustom,
-          language: tsLang
-        }
-      });
-      return;
-    }
+    // Configuração base obtida dos atributos inline (fallback imediato)
+    var fallbackConfig = {
+      id: videoId || 'vt_vsl_aevo_pro',
+      src: inlineSrc || 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/playlist.m3u8',
+      type: inlineType,
+      bunnyLibraryId: inlineLibraryId,
+      bunnyVideoId: inlineBunnyVideoId,
+      poster: inlinePoster,
+      pitchDelay: parseInt(container.getAttribute('data-pitch-delay') || '500', 10),
+      primaryColor: container.getAttribute('data-primary-color') || '#E11D48',
+      smartAutoplay: true,
+      smartAutoplayText: container.getAttribute('data-autoplay-text') || 'Seu vídeo já começou! Clique para ouvir áudio',
+      smartAutoplayTheme: container.getAttribute('data-autoplay-theme') || 'yellow',
+      smartAutoplayShape: autoplayShape,
+      smartAutoplayPosition: autoplayPos,
+      smartAutoplayOpacity: autoplayOpacity,
+      smartAutoplaySubtext: autoplaySubtext,
+      resumePlayback: inlineResume,
+      resumePlaybackLanguage: inlineResumeLang,
+      onlyProgressBar: true,
+      thumbSniper: {
+        enabled: tsEnabled,
+        templateId: tsTemplate,
+        headline: tsHeadline,
+        subheadline: tsSubheadline,
+        buttonText: tsButton,
+        buttonColor: tsColor,
+        customMediaUrl: tsCustom,
+        language: tsLang
+      }
+    };
 
-    // Caso contrário, busca na API do backend
+    // Detecta a URL do servidor VeloTurb pelo script tag
     var scriptOrigin = '';
     var currentScript = document.currentScript;
     if (currentScript && currentScript.src) {
@@ -127,36 +124,50 @@
     }
     var apiBase = scriptOrigin || window.location.origin;
 
-    fetch(apiBase + '/api/videos/' + encodeURIComponent(videoId), { mode: 'cors' })
+    // Busca configurações mais recentes ao vivo da API (NÃO precisa colar novo código ao alterar!)
+    if (videoId && apiBase) {
+      var controller = window.AbortController ? new AbortController() : null;
+      var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 1800) : null;
+
+      fetch(apiBase + '/api/videos/' + encodeURIComponent(videoId) + '?_t=' + Date.now(), {
+        mode: 'cors',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+        signal: controller ? controller.signal : undefined
+      })
       .then(function(res) {
+        if (timeoutId) clearTimeout(timeoutId);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
-      .then(function(videoConfig) {
-        renderPlayer(container, videoConfig);
+      .then(function(serverConfig) {
+        // As alterações salvas no app VeloTurb sobrescrevem os atributos estáticos antigos da página!
+        var merged = Object.assign({}, fallbackConfig, serverConfig);
+        if (serverConfig.settings) {
+          if (serverConfig.settings.primaryColor) merged.primaryColor = serverConfig.settings.primaryColor;
+          if (serverConfig.settings.smartAutoplayText) merged.smartAutoplayText = serverConfig.settings.smartAutoplayText;
+          if (serverConfig.settings.smartAutoplayTheme) merged.smartAutoplayTheme = serverConfig.settings.smartAutoplayTheme;
+          if (serverConfig.settings.smartAutoplayShape) merged.smartAutoplayShape = serverConfig.settings.smartAutoplayShape;
+          if (serverConfig.settings.smartAutoplayPosition) merged.smartAutoplayPosition = serverConfig.settings.smartAutoplayPosition;
+          if (serverConfig.settings.smartAutoplayOpacity !== undefined) merged.smartAutoplayOpacity = serverConfig.settings.smartAutoplayOpacity;
+          if (serverConfig.settings.smartAutoplaySubtext !== undefined) merged.smartAutoplaySubtext = serverConfig.settings.smartAutoplaySubtext;
+          if (serverConfig.settings.pitchDelaySeconds !== undefined) merged.pitchDelay = serverConfig.settings.pitchDelaySeconds;
+          if (serverConfig.settings.resumePlayback !== undefined) merged.resumePlayback = serverConfig.settings.resumePlayback;
+          if (serverConfig.settings.resumePlaybackLanguage) merged.resumePlaybackLanguage = serverConfig.settings.resumePlaybackLanguage;
+          if (serverConfig.settings.resumePlaybackTitle) merged.resumePlaybackTitle = serverConfig.settings.resumePlaybackTitle;
+          if (serverConfig.settings.resumePlaybackContinueText) merged.resumePlaybackContinueText = serverConfig.settings.resumePlaybackContinueText;
+          if (serverConfig.settings.resumePlaybackRestartText) merged.resumePlaybackRestartText = serverConfig.settings.resumePlaybackRestartText;
+          if (serverConfig.settings.thumbSniper) merged.thumbSniper = serverConfig.settings.thumbSniper;
+        }
+        renderPlayer(container, merged);
       })
-      .catch(function() {
-        renderPlayer(container, {
-          id: videoId || 'vt_vsl_aevo_pro',
-          src: 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/playlist.m3u8',
-          type: 'hls',
-          bunnyLibraryId: '802485',
-          bunnyVideoId: 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7',
-          poster: 'https://vz-de50afce-82d.b-cdn.net/e0f24211-791e-4a84-99e9-1ac03bc1b5b7/thumbnail.jpg',
-          pitchDelay: 500,
-          primaryColor: '#E11D48',
-          smartAutoplay: true,
-          smartAutoplayText: 'Seu vídeo já começou! Clique para ouvir áudio',
-          smartAutoplayTheme: 'yellow',
-          smartAutoplayShape: 'pill',
-          smartAutoplayPosition: 'top',
-          smartAutoplayOpacity: 100,
-          resumePlayback: true,
-          resumePlaybackLanguage: 'pt',
-          onlyProgressBar: true,
-          thumbSniper: { enabled: true, templateId: 'ts_01' }
-        });
+      .catch(function(err) {
+        // Fallback imediato se offline
+        console.warn('[VeloTurb] Usando fallback local:', err);
+        renderPlayer(container, fallbackConfig);
       });
+    } else {
+      renderPlayer(container, fallbackConfig);
+    }
   }
 
   function renderPlayer(container, config) {
@@ -176,9 +187,9 @@
     var isSpanish = resumeLang === 'es';
 
     var resumeTexts = {
-      title: isSpanish ? 'Ya has comenzado a ver este video' : 'Você já começou a assistir esse vídeo',
-      continueBtn: isSpanish ? '¿Continuar viendo?' : 'Continuar assistindo?',
-      restartBtn: isSpanish ? '¿Ver desde el inicio?' : 'Assistir do início?'
+      title: config.resumePlaybackTitle || (config.settings && config.settings.resumePlaybackTitle) || (isSpanish ? 'Ya has comenzado a ver este video' : 'Você já começou a assistir esse vídeo'),
+      continueBtn: config.resumePlaybackContinueText || (config.settings && config.settings.resumePlaybackContinueText) || (isSpanish ? '¿Continuar viendo?' : 'Continuar assistindo?'),
+      restartBtn: config.resumePlaybackRestartText || (config.settings && config.settings.resumePlaybackRestartText) || (isSpanish ? '¿Ver desde el inicio?' : 'Assistir do início?')
     };
 
     // ThumbSniper Settings & copy (Spanish vs Portuguese)

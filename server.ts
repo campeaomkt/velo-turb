@@ -234,8 +234,13 @@ app.post('/api/config', (req, res) => {
   return res.json({ success: true, config: appConfig });
 });
 
-// ROTA 4: GET /api/videos/:id (Usada pelo player.js na página de vendas)
+// ROTA 4: GET /api/videos/:id (Usada pelo player.js na página de vendas para atualização dinâmica em tempo real)
 app.get('/api/videos/:id', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
   const videoId = req.params.id;
   const video = videosDb[videoId];
 
@@ -250,6 +255,9 @@ app.get('/api/videos/:id', (req, res) => {
     type,
     src: video.videoUrl,
     poster: video.thumbnailUrl,
+    bunnyLibraryId: video.bunnyLibraryId || '802485',
+    bunnyVideoId: video.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7',
+    bunnyCdnHostname: video.bunnyCdnHostname || 'vz-de50afce-82d.b-cdn.net',
     pitchDelay: video.settings?.pitchDelaySeconds || video.pitchTime || 0,
     pitchDelaySeconds: video.settings?.pitchDelaySeconds || video.pitchTime || 0,
     primaryColor: video.settings?.primaryColor || '#E11D48',
@@ -264,7 +272,14 @@ app.get('/api/videos/:id', (req, res) => {
     smartAutoplaySubtext: video.settings?.smartAutoplaySubtext || '',
     resumePlayback: video.settings?.resumePlayback !== false,
     resumePlaybackLanguage: video.settings?.resumePlaybackLanguage || 'pt',
+    resumePlaybackTitle: video.settings?.resumePlaybackTitle,
+    resumePlaybackContinueText: video.settings?.resumePlaybackContinueText,
+    resumePlaybackRestartText: video.settings?.resumePlaybackRestartText,
     onlyProgressBar: video.settings?.onlyProgressBar ?? true,
+    allowPause: video.settings?.allowPause ?? true,
+    hideControls: video.settings?.hideControls ?? false,
+    antiDownload: video.settings?.antiDownload ?? true,
+    fakeProgressBar: video.settings?.fakeProgressBar ?? true,
     thumbSniper: video.settings?.thumbSniper || { enabled: true, templateId: 'ts_01' },
     settings: video.settings,
   });
@@ -354,27 +369,31 @@ app.post('/api/videos', (req, res) => {
   }
 });
 
-// ROTA 6: PUT /api/videos/:id (Atualizar configurações do vídeo)
+// ROTA 6: PUT /api/videos/:id (Atualizar configurações do vídeo com sincronização instantânea)
 app.put('/api/videos/:id', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   const videoId = req.params.id;
   const existing = videosDb[videoId];
 
-  if (!existing) {
-    return res.status(404).json({ error: 'Vídeo não encontrado para atualização.' });
-  }
-
-  const updated = {
-    ...existing,
-    ...req.body,
-    id: videoId,
-    settings: {
-      ...existing.settings,
-      ...(req.body.settings || {}),
-    },
-  };
+  const updated = existing
+    ? {
+        ...existing,
+        ...req.body,
+        id: videoId,
+        settings: {
+          ...existing.settings,
+          ...(req.body.settings || {}),
+        },
+      }
+    : {
+        id: videoId,
+        ...req.body,
+        settings: req.body.settings || {},
+      };
 
   videosDb[videoId] = updated;
   saveVideosDb();
+  console.log(`[VeloTurb Server] Configurações salvas para vídeo ${videoId}!`);
 
   return res.json({ success: true, video: updated });
 });
