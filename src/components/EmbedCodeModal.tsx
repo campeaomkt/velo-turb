@@ -110,15 +110,15 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   <div class="veloturb-player-placeholder" style="position: relative; width: 100%; padding-bottom: 56.25%; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
     
     <!-- Smart Autoplay Unmute Hook -->
-    <div id="veloturb-unmute-${video.id}" style="position: absolute; ${autoplayPosStyle} ${isFullWidthAutoplay ? 'width: 100%; max-width: 100%; left: 0; transform: none;' : 'max-width: 92%;'} z-index: 40; background: ${bannerColors.bg}; color: ${bannerColors.text}; opacity: ${autoplayOpacity / 100}; padding: ${autoplayShape === 'two_lines' ? '12px 24px' : '10px 22px'}; border-radius: ${autoplayBorderRadius}; font-weight: 800; font-size: 14px; font-family: system-ui, -apple-system, sans-serif; display: flex; ${autoplayShape === 'two_lines' ? 'flex-direction: column;' : ''} align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; white-space: nowrap;">
-      <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+    <div id="veloturb-unmute-${video.id}" class="vt-inline-unmute" style="position: absolute; ${autoplayPosStyle} ${isFullWidthAutoplay ? 'width: 100%; max-width: 100%; left: 0; transform: none;' : 'max-width: 94%;'} z-index: 40; background: ${bannerColors.bg}; color: ${bannerColors.text}; opacity: ${autoplayOpacity / 100}; padding: ${autoplayShape === 'two_lines' ? '10px 18px' : '8px 18px'}; border-radius: ${autoplayBorderRadius}; font-weight: 800; font-size: 13.5px; font-family: system-ui, -apple-system, sans-serif; display: flex; ${autoplayShape === 'two_lines' ? 'flex-direction: column;' : ''} align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; box-sizing: border-box;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
         <!-- Ícone Som Mudo (Esquerda) -->
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
           <line x1="23" y1="9" x2="17" y2="15"></line>
           <line x1="17" y1="9" x2="23" y2="15"></line>
         </svg>
-        <span style="font-weight: 800; letter-spacing: -0.2px;">${autoplayText}</span>
+        <span style="font-weight: 800; letter-spacing: -0.2px; line-height: 1.25;">${autoplayText}</span>
         <!-- Ícone Som Ativo com Ondas (Direita) -->
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -141,14 +141,14 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     ></video>
 
     <!-- ThumbSniper Pause Hook Overlay (com suporte real a Espanhol e Português) -->
-    <div id="veloturb-thumbsniper-${video.id}" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 45; align-items: center; justify-content: center; padding: 15px; cursor: pointer; text-align: center; font-family: system-ui, sans-serif;">
-      <div style="background: #09090b; border: 1px solid #27272a; border-radius: 14px; padding: 22px 18px; max-width: 360px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
-        <div style="font-size: 28px; margin-bottom: 8px;">✋</div>
-        <h4 style="color: #fff; font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px 0; line-height: 1.2;">${tsHeadline}</h4>
-        <p style="color: #a1a1aa; font-size: 12px; margin: 0 0 16px 0;">${tsSubheadline}</p>
+    <div id="veloturb-thumbsniper-${video.id}" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 45; align-items: center; justify-content: center; padding: 12px; cursor: pointer; text-align: center; font-family: system-ui, sans-serif; box-sizing: border-box;">
+      <div style="background: #09090b; border: 1px solid #27272a; border-radius: 14px; padding: 18px 16px; max-width: 340px; width: 92%; box-shadow: 0 20px 40px rgba(0,0,0,0.8); box-sizing: border-box;">
+        <div style="font-size: 24px; margin-bottom: 6px;">✋</div>
+        <h4 style="color: #fff; font-size: 14px; font-weight: 800; text-transform: uppercase; margin: 0 0 6px 0; line-height: 1.2;">${tsHeadline}</h4>
+        <p style="color: #a1a1aa; font-size: 11px; margin: 0 0 14px 0; line-height: 1.3;">${tsSubheadline}</p>
         <div style="position: relative; display: inline-block; width: 100%;">
-          <button style="width: 100%; background: ${tsButtonColor}; color: #fff; font-weight: 800; font-size: 13px; text-transform: uppercase; padding: 12px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(239,68,68,0.5);">${tsButtonText}</button>
-          <div style="position: absolute; bottom: -8px; right: 20px; font-size: 28px; animation: veloturbTap 1.2s infinite ease-in-out; pointer-events: none;">👆</div>
+          <button style="width: 100%; background: ${tsButtonColor}; color: #fff; font-weight: 800; font-size: 12px; text-transform: uppercase; padding: 10px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(239,68,68,0.5);">${tsButtonText}</button>
+          <div style="position: absolute; bottom: -8px; right: 20px; font-size: 24px; animation: veloturbTap 1.2s infinite ease-in-out; pointer-events: none;">👆</div>
         </div>
       </div>
     </div>
@@ -167,6 +167,13 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   50% { transform: translateY(2px) scale(0.92); }
   70% { transform: translateY(-4px) scale(1.05); }
   100% { transform: translateY(0) scale(1); }
+}
+@media (max-width: 640px) {
+  #veloturb-unmute-${video.id} {
+    font-size: clamp(11px, 3.2vw, 13px) !important;
+    padding: 6px 12px !important;
+    max-width: 95% !important;
+  }
 }
 </style>
 
@@ -217,7 +224,10 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     } catch(e) {}
   }
 
-  if (b) b.onclick = function(e) { e.stopPropagation(); unmuteAndRestartFromZero(); };
+  if (b) {
+    b.onclick = function(e) { e.stopPropagation(); unmuteAndRestartFromZero(); };
+    b.addEventListener('touchend', function(e) { e.preventDefault(); e.stopPropagation(); unmuteAndRestartFromZero(); }, { passive: false });
+  }
   v.onclick = function() {
     if (v.muted || (b && b.style.display !== 'none')) {
       unmuteAndRestartFromZero();

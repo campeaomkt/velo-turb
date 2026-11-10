@@ -284,41 +284,41 @@
       document.head.appendChild(pitchStyle);
     }
 
-    // Renderiza Player com suporte dual + Card Laranja de Retomada Inteligente (image_8f1ffac5.png)
+    // Renderiza Player com suporte dual + Card Laranja de Retomada Inteligente (image_8f1ffac5.png) com classes mobile
     container.innerHTML =
       '<div id="' + instanceId + '-box" style="position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;clear:both;">' +
         // Smart Autoplay Banner com Posicionamento, Formato e Opacidade customizáveis
-        '<div id="' + instanceId + '-unmute" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;' + posCss + widthCss + opacityCss + flexDirCss + 'z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';' + paddingCss + borderRadiusCss + 'font-weight:800;font-size:13.5px;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;white-space:nowrap;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;">' +
-          '<div style="display:flex;align-items:center;justify-content:center;gap:8px;">' +
+        '<div id="' + instanceId + '-unmute" class="vt-unmute-btn" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;' + posCss + widthCss + opacityCss + flexDirCss + 'z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';' + paddingCss + borderRadiusCss + 'font-weight:800;font-size:13.5px;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;-webkit-tap-highlight-color:transparent;">' +
+          '<div style="display:flex;align-items:center;justify-content:center;gap:6px;">' +
             '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' +
             '<span style="font-weight:800;letter-spacing:-0.2px;">' + smartAutoplayText + '</span>' +
             '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' +
           '</div>' +
-          (smartAutoplayShape === 'two_lines' ? '<div style="font-size:11px;opacity:0.92;font-weight:600;margin-top:2px;">' + (smartAutoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')) + '</div>' : '') +
+          (smartAutoplayShape === 'two_lines' ? '<div class="vt-unmute-two-lines" style="font-size:11px;opacity:0.92;font-weight:600;margin-top:2px;">' + (smartAutoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')) + '</div>' : '') +
         '</div>' +
 
-        // Card Laranja de Retomada Inteligente (Exatamente o modelo VTurb de image_8f1ffac5.png)
-        '<div id="' + instanceId + '-resume" style="display:' + (shouldShowResumePrompt ? 'flex' : 'none') + ';position:absolute;inset:0;background:rgba(0,0,0,0.65);z-index:50;align-items:center;justify-content:center;padding:12px;cursor:default;">' +
-          '<div style="width:100%;max-width:560px;background:#eb6b09;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.25);position:relative;">' +
-            '<h3 style="color:#ffffff;font-size:21px;font-weight:800;margin:0 0 26px 0;line-height:1.2;letter-spacing:-0.4px;">' +
+        // Card Laranja de Retomada Inteligente (Exatamente o modelo VTurb de image_8f1ffac5.png otimizado para mobile)
+        '<div id="' + instanceId + '-resume" class="vt-resume-overlay" style="display:' + (shouldShowResumePrompt ? 'flex' : 'none') + ';position:absolute;inset:0;background:rgba(0,0,0,0.65);z-index:50;align-items:center;justify-content:center;padding:12px;cursor:default;">' +
+          '<div class="vt-resume-card" style="width:100%;max-width:540px;background:#eb6b09;border-radius:18px;padding:26px 20px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.25);position:relative;">' +
+            '<h3 class="vt-resume-title" style="color:#ffffff;font-size:20px;font-weight:800;margin:0 0 22px 0;line-height:1.2;letter-spacing:-0.4px;">' +
               resumeTexts.title +
             '</h3>' +
-            '<div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;">' +
+            '<div class="vt-resume-group" style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">' +
               // Botão Continuar Assistindo?
-              '<div id="' + instanceId + '-btn-continue" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 10px;border-radius:10px;transition:transform 0.15s ease;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
-                '<div style="width:42px;height:42px;border-radius:50%;border:2px solid #ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);">' +
-                  '<svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="2" style="margin-left:2px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
+              '<div id="' + instanceId + '-btn-continue" class="vt-resume-item" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:10px;transition:transform 0.15s ease;-webkit-tap-highlight-color:transparent;">' +
+                '<div class="vt-resume-circle" style="width:38px;height:38px;border-radius:50%;border:2px solid #ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);shrink:0;">' +
+                  '<svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="2" style="margin-left:2px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
                 '</div>' +
-                '<span style="color:#ffffff;font-weight:800;font-size:15px;white-space:nowrap;">' +
+                '<span class="vt-resume-label" style="color:#ffffff;font-weight:800;font-size:14px;white-space:nowrap;">' +
                   resumeTexts.continueBtn +
                 '</span>' +
               '</div>' +
               // Botão Assistir do Início?
-              '<div id="' + instanceId + '-btn-restart" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 10px;border-radius:10px;transition:transform 0.15s ease;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
-                '<div style="width:42px;height:42px;border-radius:50%;border:2px solid #ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);">' +
-                  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>' +
+              '<div id="' + instanceId + '-btn-restart" class="vt-resume-item" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:10px;transition:transform 0.15s ease;-webkit-tap-highlight-color:transparent;">' +
+                '<div class="vt-resume-circle" style="width:38px;height:38px;border-radius:50%;border:2px solid #ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);shrink:0;">' +
+                  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>' +
                 '</div>' +
-                '<span style="color:#ffffff;font-weight:800;font-size:15px;white-space:nowrap;">' +
+                '<span class="vt-resume-label" style="color:#ffffff;font-weight:800;font-size:14px;white-space:nowrap;">' +
                   resumeTexts.restartBtn +
                 '</span>' +
               '</div>' +
@@ -342,18 +342,18 @@
         '</iframe>' +
 
         // Camada transparente interceptadora de cliques no vídeo e iframe
-        '<div id="' + instanceId + '-click-capture" style="position:absolute;inset:0;z-index:20;cursor:pointer;"></div>' +
+        '<div id="' + instanceId + '-click-capture" style="position:absolute;inset:0;z-index:20;cursor:pointer;-webkit-tap-highlight-color:transparent;"></div>' +
 
         // ThumbSniper Overlay (Com textos em Espanhol ou Português reais salvos na configuração)
-        '<div id="' + instanceId + '-thumbsniper" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:45;align-items:center;justify-content:center;padding:15px;cursor:pointer;text-align:center;">' +
-          '<div style="background:#09090b;border:1px solid #27272a;border-radius:14px;padding:22px 18px;max-width:360px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.8);">' +
-            (tsCustomMedia ? '<img src="' + tsCustomMedia + '" style="max-width:100%;max-height:220px;border-radius:10px;margin-bottom:12px;object-fit:contain;" />' : '') +
-            '<div style="font-size:28px;margin-bottom:8px;">✋</div>' +
-            '<h4 style="color:#ffffff;font-size:15px;font-weight:800;text-transform:uppercase;margin:0 0 6px 0;line-height:1.2;">' + tsHeadline + '</h4>' +
-            '<p style="color:#a1a1aa;font-size:12px;margin:0 0 16px 0;">' + tsSubheadline + '</p>' +
+        '<div id="' + instanceId + '-thumbsniper" class="vt-ts-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:45;align-items:center;justify-content:center;padding:12px;cursor:pointer;text-align:center;">' +
+          '<div class="vt-ts-card" style="background:#09090b;border:1px solid #27272a;border-radius:14px;padding:18px 16px;max-width:350px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.8);">' +
+            (tsCustomMedia ? '<img src="' + tsCustomMedia + '" style="max-width:100%;max-height:180px;border-radius:10px;margin-bottom:10px;object-fit:contain;" />' : '') +
+            '<div class="vt-ts-emoji" style="font-size:26px;margin-bottom:6px;">✋</div>' +
+            '<h4 class="vt-ts-headline" style="color:#ffffff;font-size:14px;font-weight:800;text-transform:uppercase;margin:0 0 5px 0;line-height:1.2;">' + tsHeadline + '</h4>' +
+            '<p class="vt-ts-subheadline" style="color:#a1a1aa;font-size:11.5px;margin:0 0 14px 0;">' + tsSubheadline + '</p>' +
             '<div style="position:relative;display:inline-block;width:100%;">' +
-              '<button style="width:100%;background:' + tsButtonColor + ';color:#ffffff;font-weight:800;font-size:13px;text-transform:uppercase;padding:12px;border-radius:10px;border:none;cursor:pointer;box-shadow:0 4px 15px rgba(239,68,68,0.5);">' + tsButtonText + '</button>' +
-              '<div style="position:absolute;bottom:-8px;right:20px;font-size:28px;animation:vtTap 1.2s infinite ease-in-out;pointer-events:none;">👆</div>' +
+              '<button class="vt-ts-btn" style="width:100%;background:' + tsButtonColor + ';color:#ffffff;font-weight:800;font-size:12.5px;text-transform:uppercase;padding:10px;border-radius:10px;border:none;cursor:pointer;box-shadow:0 4px 15px rgba(239,68,68,0.5);">' + tsButtonText + '</button>' +
+              '<div class="vt-ts-hand" style="position:absolute;bottom:-8px;right:16px;font-size:26px;animation:vtTap 1.2s infinite ease-in-out;pointer-events:none;">👆</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -369,7 +369,27 @@
       styleEl.id = 'veloturb-keyframes';
       styleEl.innerHTML =
         '@keyframes vtTap { 0%{transform:translateY(0) scale(1);} 30%{transform:translateY(-8px) scale(1.1);} 50%{transform:translateY(2px) scale(0.92);} 70%{transform:translateY(-4px) scale(1.05);} 100%{transform:translateY(0) scale(1);} }' +
-        '@keyframes vtPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.03);box-shadow:0 6px 22px rgba(0,0,0,0.5);} }';
+        '@keyframes vtPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.03);box-shadow:0 6px 22px rgba(0,0,0,0.5);} }' +
+        '@media (max-width: 640px) {' +
+          '.vt-unmute-btn { font-size: 11px !important; padding: 6px 12px !important; max-width: 95% !important; white-space: normal !important; box-sizing: border-box !important; gap: 5px !important; line-height: 1.25 !important; }' +
+          '.vt-unmute-btn svg { width: 14px !important; height: 14px !important; flex-shrink: 0 !important; }' +
+          '.vt-unmute-two-lines { font-size: 9px !important; margin-top: 1px !important; line-height: 1.15 !important; }' +
+          '.vt-resume-overlay { padding: 6px !important; }' +
+          '.vt-resume-card { padding: 10px 12px !important; max-width: 95% !important; border-radius: 12px !important; }' +
+          '.vt-resume-title { font-size: 13px !important; margin: 0 0 8px 0 !important; line-height: 1.2 !important; }' +
+          '.vt-resume-group { gap: 8px !important; flex-wrap: nowrap !important; }' +
+          '.vt-resume-item { padding: 3px 6px !important; gap: 5px !important; }' +
+          '.vt-resume-circle { width: 26px !important; height: 26px !important; border-width: 1.5px !important; }' +
+          '.vt-resume-circle svg { width: 12px !important; height: 12px !important; }' +
+          '.vt-resume-label { font-size: 11px !important; white-space: nowrap !important; }' +
+          '.vt-ts-overlay { padding: 6px !important; }' +
+          '.vt-ts-card { padding: 8px 12px !important; max-width: 92% !important; border-radius: 10px !important; }' +
+          '.vt-ts-emoji { font-size: 18px !important; margin-bottom: 2px !important; }' +
+          '.vt-ts-headline { font-size: 11px !important; margin: 0 0 3px 0 !important; line-height: 1.2 !important; }' +
+          '.vt-ts-subheadline { font-size: 9.5px !important; margin: 0 0 6px 0 !important; line-height: 1.2 !important; }' +
+          '.vt-ts-btn { padding: 7px 10px !important; font-size: 10.5px !important; border-radius: 8px !important; }' +
+          '.vt-ts-hand { font-size: 18px !important; bottom: -6px !important; right: 10px !important; }' +
+        '}';
       document.head.appendChild(styleEl);
     }
 
@@ -607,6 +627,11 @@
         e.stopPropagation();
         activateAudioAndRestart();
       };
+      unmuteBtn.addEventListener('touchend', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        activateAudioAndRestart();
+      }, { passive: false });
     }
 
     // Handler universal de clique no vídeo (funciona no nativo e no Bunny Iframe)

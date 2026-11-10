@@ -46,6 +46,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
   const [formData, setFormData] = useState<VideoItem>({ ...video });
   // Start on Smart Autoplay as requested by user
   const [activeTab, setActiveTab] = useState<EditTab>('autoplay');
+  const [mobileView, setMobileView] = useState<'config' | 'preview'>('config');
   const [showThumbSniperModal, setShowThumbSniperModal] = useState(false);
   const [pitchMinutes, setPitchMinutes] = useState(Math.floor((video.settings.pitchDelaySeconds || 0) / 60));
   const [pitchSeconds, setPitchSeconds] = useState((video.settings.pitchDelaySeconds || 0) % 60);
@@ -138,54 +139,126 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-7xl h-[94vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-7xl h-[100dvh] sm:h-[94vh] flex flex-col shadow-2xl border-0 sm:border border-slate-200 overflow-hidden font-sans">
         
         {/* Top Header */}
-        <div className="px-6 py-3.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={onClose}
-              className="text-slate-500 hover:text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="text-slate-500 hover:text-slate-800 text-xs font-semibold flex items-center gap-1 cursor-pointer py-1 px-1.5 sm:px-2 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
+              title="Voltar ao vídeo"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Voltar ao vídeo</span>
+              <span className="hidden sm:inline">Voltar ao vídeo</span>
             </button>
-            <div className="h-4 w-px bg-slate-300" />
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <span className="text-rose-600 font-extrabold">VTurb</span>
+            <div className="h-4 w-px bg-slate-300 hidden sm:block" />
+            <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="text-rose-600 font-extrabold shrink-0">VTurb</span>
               <span>•</span>
-              <span className="truncate max-w-md">{formData.title}</span>
+              <span className="truncate max-w-[130px] sm:max-w-xs md:max-w-md">{formData.title}</span>
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={() => onOpenEmbed(formData)}
-              className="px-3.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-xs border border-rose-200 transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-[11px] sm:text-xs border border-rose-200 transition-colors cursor-pointer shrink-0"
             >
-              Obter Código da PV
+              <span className="sm:hidden">Código</span>
+              <span className="hidden sm:inline">Obter Código da PV</span>
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-transform active:scale-95 cursor-pointer"
+              className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-transform active:scale-95 cursor-pointer shrink-0"
             >
-              Salvar Alterações
+              <span className="sm:hidden">Salvar</span>
+              <span className="hidden sm:inline">Salvar Alterações</span>
             </button>
             <button
               onClick={onClose}
               className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Main Body (VTurb 3-Pane Architecture matching image_cda07bcf.png) */}
+        {/* MOBILE CONTROLS BAR (< lg): View Toggle + Horizontal Chips */}
+        <div className="lg:hidden bg-slate-100 border-b border-slate-200 shrink-0">
+          {/* View Toggle: Configurar vs Live Preview */}
+          <div className="flex items-center p-1.5 bg-slate-200/70 border-b border-slate-200 text-xs">
+            <button
+              onClick={() => setMobileView('config')}
+              className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${
+                mobileView === 'config'
+                  ? 'bg-white text-blue-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Configurar</span>
+            </button>
+            <button
+              onClick={() => setMobileView('preview')}
+              className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${
+                mobileView === 'preview'
+                  ? 'bg-white text-rose-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Pré-visualizar VSL</span>
+            </button>
+          </div>
+
+          {/* Horizontal Scrolling Chips for Settings Tabs */}
+          <div className="flex items-center gap-1.5 px-2.5 py-2 overflow-x-auto no-scrollbar">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isSelected = activeTab === item.id;
+              const isOn = item.status === 'On';
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    // If user was on preview and taps a tab, allow them to view config
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                  <span>{item.name}</span>
+                  {item.status && (
+                    <span
+                      className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full ${
+                        isSelected
+                          ? 'bg-blue-500 text-white'
+                          : isOn
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-200 text-slate-500'
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Modal Main Body (VTurb 3-Pane Architecture) */}
         <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
           
-          {/* PANE 1: Left Menu Sidebar (matching image_cda07bcf.png) */}
-          <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/70 p-4 shrink-0 flex flex-col justify-between overflow-y-auto">
+          {/* PANE 1: Left Menu Sidebar (Desktop only lg:flex) */}
+          <div className="hidden lg:flex w-64 border-r border-slate-200 bg-slate-50/70 p-4 shrink-0 flex-col justify-between overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 mb-1">
@@ -272,7 +345,9 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
           </div>
 
           {/* PANE 2: Center Dedicated Configuration Form for activeTab */}
-          <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-white">
+          <div className={`flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-white ${
+            mobileView === 'preview' ? 'hidden lg:block' : 'block'
+          }`}>
             
             {/* 1. SMART AUTOPLAY (Separado individualmente como solicitado!) */}
             {activeTab === 'autoplay' && (
@@ -1054,7 +1129,9 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
           </div>
 
           {/* PANE 3: Right Column Live Interactive Player Preview (matching image_fbf8f9ed.png) */}
-          <div className="w-full lg:w-[450px] border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50/50 p-5 shrink-0 flex flex-col justify-between overflow-y-auto space-y-4">
+          <div className={`w-full lg:w-[450px] border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50/50 p-3.5 sm:p-5 shrink-0 flex flex-col justify-between overflow-y-auto space-y-4 ${
+            mobileView === 'config' ? 'hidden lg:flex' : 'flex'
+          }`}>
             
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -1068,7 +1145,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               </div>
 
               {/* The Player with live active overlay */}
-              <div className="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 shadow-2xl relative">
+              <div className="bg-slate-950 p-2 sm:p-2.5 rounded-2xl border border-slate-800 shadow-2xl relative">
                 <VideoPlayer
                   video={formData}
                   isSimulatedSalesPage={true}
@@ -1077,9 +1154,9 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
               </div>
 
               {/* Current Preview Status Indicator */}
-              <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs flex items-center gap-2">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0" />
-                <span className="font-semibold text-[11px]">
+                <span className="font-semibold text-[10.5px] sm:text-[11px]">
                   {activeTab === 'autoplay' && 'Pré-visualizando Smart Autoplay™ ao vivo'}
                   {activeTab === 'progress' && 'Pré-visualizando Retomada Inteligente ao vivo'}
                   {activeTab === 'thumbsniper' && 'Pré-visualizando ThumbSniper™ ao vivo'}
@@ -1089,7 +1166,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
             </div>
 
             {/* Video Stats Footer */}
-            <div className="p-3.5 bg-white border border-slate-200 rounded-xl text-xs space-y-1.5 text-slate-600 shadow-xs">
+            <div className="p-3 sm:p-3.5 bg-white border border-slate-200 rounded-xl text-xs space-y-1.5 text-slate-600 shadow-xs">
               <div className="flex justify-between items-center">
                 <span>Duração Total:</span>
                 <strong className="font-mono text-slate-900">{formatTime(formData.duration)}</strong>
@@ -1109,10 +1186,10 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
           >
             Cancelar
           </button>
@@ -1120,7 +1197,7 @@ export const VideoEditModal: React.FC<VideoEditModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleSave}
-              className="px-6 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-transform active:scale-95 cursor-pointer"
+              className="px-4 sm:px-6 py-1.5 sm:py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-transform active:scale-95 cursor-pointer"
             >
               Salvar Alterações
             </button>

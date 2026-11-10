@@ -277,15 +277,15 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
         </div>
 
         {/* Right Controls: Search, Nova Pasta Button, Upload Button */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 w-full md:w-auto">
           {/* Search Input with Search Icon Button */}
-          <div className="relative flex items-center">
+          <div className="relative flex items-center flex-1 sm:flex-none">
             <input
               type="text"
               placeholder="Pesquisar vídeos"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-48 sm:w-64 pl-3.5 pr-9 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full sm:w-56 md:w-64 pl-3.5 pr-9 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
             />
             <button
               type="button"
@@ -295,23 +295,25 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
             </button>
           </div>
 
-          {/* Button: Nova Pasta (white background with border, folder+ icon) */}
-          <button
-            onClick={() => setShowNewFolderModal(true)}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-2 shadow-2xs transition-colors cursor-pointer shrink-0"
-          >
-            <FolderPlus className="w-4 h-4 text-slate-600" />
-            <span>Nova Pasta</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Button: Nova Pasta (white background with border, folder+ icon) */}
+            <button
+              onClick={() => setShowNewFolderModal(true)}
+              className="px-3 sm:px-3.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5 sm:gap-2 shadow-2xs transition-colors cursor-pointer shrink-0"
+            >
+              <FolderPlus className="w-4 h-4 text-slate-600" />
+              <span>Nova Pasta</span>
+            </button>
 
-          {/* Button: Upload (solid blue #0066FF) */}
-          <button
-            onClick={() => onOpenUpload(isInsideFolder ? currentFolder.id : undefined)}
-            className="px-4 py-2 rounded-xl bg-[#0066FF] hover:bg-blue-600 text-white text-xs font-extrabold flex items-center gap-2 shadow-sm transition-transform active:scale-95 cursor-pointer shrink-0"
-          >
-            <Upload className="w-4 h-4 stroke-[2.5]" />
-            <span>Upload</span>
-          </button>
+            {/* Button: Upload (solid blue #0066FF) */}
+            <button
+              onClick={() => onOpenUpload(isInsideFolder ? currentFolder.id : undefined)}
+              className="px-3.5 sm:px-4 py-2 rounded-xl bg-[#0066FF] hover:bg-blue-600 text-white text-xs font-extrabold flex items-center gap-1.5 sm:gap-2 shadow-sm transition-transform active:scale-95 cursor-pointer shrink-0"
+            >
+              <Upload className="w-4 h-4 stroke-[2.5]" />
+              <span>Upload</span>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -371,7 +373,8 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
       )}
 
       {/* Main Table Container (matching image_3cb5e0ce.png) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs relative">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs relative overflow-x-auto">
+        <div className="min-w-[560px] sm:min-w-0">
         
         {/* Table Header */}
         <div className="grid grid-cols-12 items-center px-5 py-3 border-b border-slate-100 text-xs font-bold text-slate-500 select-none bg-slate-50/60 rounded-t-2xl">
@@ -826,6 +829,7 @@ export const VideoListView: React.FC<VideoListViewProps> = ({
 
         </div>
 
+        </div>
       </div>
 
       {/* Floating Batch Actions Bar when 1 or more items are selected */}
