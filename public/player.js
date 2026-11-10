@@ -217,17 +217,32 @@
     }[smartAutoplayTheme] || { bg: '#FACC15', color: '#000000' };
 
     // Autoplay Banner Layout & Position Styles
-    var posCss = '';
-    var isFullWidth = smartAutoplayShape === 'full_width';
+    // Wrapper Flexbox que garante alinhamento exato no centro em Desktop e Mobile (sem ser quebrado por @keyframes ou transforms)
+    var wrapperPositionStyle = '';
+    var isCenteredPos = smartAutoplayPos === 'top' || smartAutoplayPos === 'bottom' || smartAutoplayPos === 'center';
     switch (smartAutoplayPos) {
-      case 'center': posCss = 'top:50%;left:50%;transform:translate(-50%, -50%);'; break;
-      case 'bottom': posCss = 'bottom:22px;left:50%;transform:translateX(-50%);'; break;
-      case 'top_left': posCss = 'top:12px;left:14px;'; break;
-      case 'top_right': posCss = 'top:12px;right:14px;'; break;
-      case 'bottom_left': posCss = 'bottom:22px;left:14px;'; break;
-      case 'bottom_right': posCss = 'bottom:22px;right:14px;'; break;
+      case 'center':
+        wrapperPositionStyle = 'top:0;bottom:0;left:0;right:0;width:100%;height:100%;align-items:center;justify-content:center;';
+        break;
+      case 'bottom':
+        wrapperPositionStyle = 'bottom:22px;left:0;right:0;width:100%;align-items:flex-end;justify-content:center;';
+        break;
+      case 'top_left':
+        wrapperPositionStyle = 'top:12px;left:14px;right:0;align-items:flex-start;justify-content:flex-start;';
+        break;
+      case 'top_right':
+        wrapperPositionStyle = 'top:12px;right:14px;left:0;align-items:flex-start;justify-content:flex-end;';
+        break;
+      case 'bottom_left':
+        wrapperPositionStyle = 'bottom:22px;left:14px;right:0;align-items:flex-end;justify-content:flex-start;';
+        break;
+      case 'bottom_right':
+        wrapperPositionStyle = 'bottom:22px;right:14px;left:0;align-items:flex-end;justify-content:flex-end;';
+        break;
       case 'top':
-      default: posCss = 'top:12px;left:50%;transform:translateX(-50%);'; break;
+      default:
+        wrapperPositionStyle = 'top:12px;left:0;right:0;width:100%;align-items:flex-start;justify-content:center;';
+        break;
     }
 
     var borderRadiusCss = 'border-radius:9999px;';
@@ -240,7 +255,8 @@
     }
 
     var paddingCss = smartAutoplayShape === 'two_lines' ? 'padding:12px 24px;' : (smartAutoplayShape === 'minimal' ? 'padding:7px 15px;' : 'padding:10px 22px;');
-    var widthCss = isFullWidth ? 'width:100%;max-width:100%;left:0;transform:none;' : 'max-width:92%;';
+    var widthCss = isFullWidth ? 'width:100%;max-width:100%;' : 'max-width:94%;';
+    var marginCss = isCenteredPos ? 'margin:0 auto;' : '';
     var opacityCss = 'opacity:' + (smartAutoplayOpacity / 100) + ';';
     var flexDirCss = smartAutoplayShape === 'two_lines' ? 'flex-direction:column;' : '';
 
@@ -287,14 +303,16 @@
     // Renderiza Player com suporte dual + Card Laranja de Retomada Inteligente (image_8f1ffac5.png) com classes mobile
     container.innerHTML =
       '<div id="' + instanceId + '-box" style="position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;clear:both;">' +
-        // Smart Autoplay Banner com Posicionamento, Formato e Opacidade customizáveis
-        '<div id="' + instanceId + '-unmute" class="vt-unmute-btn" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;' + posCss + widthCss + opacityCss + flexDirCss + 'z-index:40;background:' + themeStyles.bg + ';color:' + themeStyles.color + ';' + paddingCss + borderRadiusCss + 'font-weight:800;font-size:13.5px;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;-webkit-tap-highlight-color:transparent;">' +
-          '<div style="display:flex;align-items:center;justify-content:center;gap:6px;">' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' +
-            '<span style="font-weight:800;letter-spacing:-0.2px;">' + smartAutoplayText + '</span>' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' +
+        // Smart Autoplay Banner com Wrapper Full-Width (Garante 100% de centralização em Desktop e Mobile)
+        '<div id="' + instanceId + '-unmute-wrapper" class="vt-unmute-wrapper" style="display:' + (shouldShowResumePrompt ? 'none' : 'flex') + ';position:absolute;' + wrapperPositionStyle + 'z-index:40;pointer-events:none;box-sizing:border-box;padding:0 8px;">' +
+          '<div id="' + instanceId + '-unmute" class="vt-unmute-btn" style="pointer-events:auto;position:relative;' + marginCss + widthCss + opacityCss + flexDirCss + 'background:' + themeStyles.bg + ';color:' + themeStyles.color + ';' + paddingCss + borderRadiusCss + 'font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.45);text-align:center;box-sizing:border-box;transition:transform 0.15s ease-out;animation:vtPulse 2s infinite;-webkit-tap-highlight-color:transparent;">' +
+            '<div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' +
+              '<span style="font-weight:800;letter-spacing:-0.2px;line-height:1.25;">' + smartAutoplayText + '</span>' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' +
+            '</div>' +
+            (smartAutoplayShape === 'two_lines' ? '<div class="vt-unmute-two-lines" style="font-size:11px;opacity:0.92;font-weight:600;margin-top:2px;line-height:1.15;">' + (smartAutoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')) + '</div>' : '') +
           '</div>' +
-          (smartAutoplayShape === 'two_lines' ? '<div class="vt-unmute-two-lines" style="font-size:11px;opacity:0.92;font-weight:600;margin-top:2px;">' + (smartAutoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')) + '</div>' : '') +
         '</div>' +
 
         // Card Laranja de Retomada Inteligente (Exatamente o modelo VTurb de image_8f1ffac5.png otimizado para mobile)
@@ -370,6 +388,8 @@
       styleEl.innerHTML =
         '@keyframes vtTap { 0%{transform:translateY(0) scale(1);} 30%{transform:translateY(-8px) scale(1.1);} 50%{transform:translateY(2px) scale(0.92);} 70%{transform:translateY(-4px) scale(1.05);} 100%{transform:translateY(0) scale(1);} }' +
         '@keyframes vtPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.03);box-shadow:0 6px 22px rgba(0,0,0,0.5);} }' +
+        '.vt-unmute-wrapper { pointer-events: none !important; box-sizing: border-box !important; }' +
+        '.vt-unmute-btn { pointer-events: auto !important; }' +
         '@media (max-width: 640px) {' +
           '.vt-unmute-btn { font-size: 11px !important; padding: 6px 12px !important; max-width: 95% !important; white-space: normal !important; box-sizing: border-box !important; gap: 5px !important; line-height: 1.25 !important; }' +
           '.vt-unmute-btn svg { width: 14px !important; height: 14px !important; flex-shrink: 0 !important; }' +
@@ -396,6 +416,7 @@
     var video = document.getElementById(instanceId + '-video');
     var iframe = document.getElementById(instanceId + '-iframe');
     var clickCapture = document.getElementById(instanceId + '-click-capture');
+    var unmuteWrapper = document.getElementById(instanceId + '-unmute-wrapper');
     var unmuteBtn = document.getElementById(instanceId + '-unmute');
     var resumeBox = document.getElementById(instanceId + '-resume');
     var btnContinue = document.getElementById(instanceId + '-btn-continue');
@@ -526,6 +547,7 @@
         e.stopPropagation();
         shouldShowResumePrompt = false; // CRÍTICO: Desbloqueia cliques e permite pausar
         if (resumeBox) resumeBox.style.display = 'none';
+        if (unmuteWrapper) unmuteWrapper.style.display = 'none';
         if (unmuteBtn) unmuteBtn.style.display = 'none';
         if (thumbsniper) thumbsniper.style.display = 'none';
         isPlaying = true;
@@ -555,6 +577,7 @@
         e.stopPropagation();
         shouldShowResumePrompt = false; // CRÍTICO: Desbloqueia cliques e permite pausar
         if (resumeBox) resumeBox.style.display = 'none';
+        if (unmuteWrapper) unmuteWrapper.style.display = 'none';
         if (unmuteBtn) unmuteBtn.style.display = 'none';
         if (thumbsniper) thumbsniper.style.display = 'none';
         try { localStorage.removeItem(storageKey); } catch (err) {}
@@ -601,6 +624,7 @@
     function activateAudioAndRestart() {
       if (shouldShowResumePrompt) return;
       isPlaying = true;
+      if (unmuteWrapper) unmuteWrapper.style.display = 'none';
       if (unmuteBtn) unmuteBtn.style.display = 'none';
       if (thumbsniper) thumbsniper.style.display = 'none';
 
@@ -640,7 +664,7 @@
       if (shouldShowResumePrompt) return;
 
       // Se o banner de áudio ainda está aberto, o clique inicial ativa o áudio
-      if (unmuteBtn && unmuteBtn.style.display !== 'none') {
+      if ((unmuteWrapper && unmuteWrapper.style.display !== 'none') || (unmuteBtn && unmuteBtn.style.display !== 'none')) {
         activateAudioAndRestart();
         return;
       }

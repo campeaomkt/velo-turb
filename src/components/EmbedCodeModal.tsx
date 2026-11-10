@@ -72,18 +72,20 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const tsButtonText = tsConfig?.buttonText || (isSpanishTs ? 'CONTINUAR VIENDO' : 'CONTINUAR ASSISTINDO');
   const tsButtonColor = tsConfig?.buttonColor || '#EF4444';
 
-  const autoplayPosStyle = (() => {
+  const autoplayWrapperPosStyle = (() => {
     switch (autoplayPosition) {
-      case 'center': return 'top: 50%; left: 50%; transform: translate(-50%, -50%);';
-      case 'bottom': return 'bottom: 24px; left: 50%; transform: translateX(-50%);';
-      case 'top_left': return 'top: 14px; left: 16px; transform: none;';
-      case 'top_right': return 'top: 14px; right: 16px; transform: none;';
-      case 'bottom_left': return 'bottom: 24px; left: 16px; transform: none;';
-      case 'bottom_right': return 'bottom: 24px; right: 16px; transform: none;';
+      case 'center': return 'top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; align-items: center; justify-content: center;';
+      case 'bottom': return 'bottom: 22px; left: 0; right: 0; width: 100%; align-items: flex-end; justify-content: center;';
+      case 'top_left': return 'top: 14px; left: 16px; right: 0; align-items: flex-start; justify-content: flex-start;';
+      case 'top_right': return 'top: 14px; right: 16px; left: 0; align-items: flex-start; justify-content: flex-end;';
+      case 'bottom_left': return 'bottom: 22px; left: 16px; right: 0; align-items: flex-end; justify-content: flex-start;';
+      case 'bottom_right': return 'bottom: 22px; right: 16px; left: 0; align-items: flex-end; justify-content: flex-end;';
       case 'top':
-      default: return 'top: 14px; left: 50%; transform: translateX(-50%);';
+      default: return 'top: 14px; left: 0; right: 0; width: 100%; align-items: flex-start; justify-content: center;';
     }
   })();
+
+  const isCenteredPosition = autoplayPosition === 'top' || autoplayPosition === 'bottom' || autoplayPosition === 'center';
 
   const autoplayBorderRadius = (() => {
     switch (autoplayShape) {
@@ -103,29 +105,31 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
   const shortEmbedCode = `<div style="display: block; width: 100%; max-width: 100%; margin: 0 auto 20px auto; clear: both; flex: 0 0 100%;">
   <div id="veloturb-${video.id}" data-video-id="${video.id}" data-src="${videoSourceUrl}" data-type="${isHls ? 'hls' : 'mp4'}" data-bunny-library-id="${video.bunnyLibraryId || '802485'}" data-bunny-video-id="${video.bunnyVideoId || 'e0f24211-791e-4a84-99e9-1ac03bc1b5b7'}" data-poster="${video.thumbnailUrl || ''}" data-pitch-delay="${video.settings.pitchDelaySeconds || 500}" data-primary-color="${primaryColor}" data-autoplay-text="${autoplayText}" data-autoplay-theme="${autoplayTheme}" data-autoplay-shape="${autoplayShape}" data-autoplay-pos="${autoplayPosition}" data-autoplay-opacity="${autoplayOpacity}" data-autoplay-subtext="${encodeURIComponent(autoplaySubtext)}" data-resume="${video.settings.resumePlayback !== false ? 'true' : 'false'}" data-resume-lang="${video.settings.resumePlaybackLanguage || 'pt'}" data-thumbsniper-enabled="${tsConfig?.enabled !== false ? 'true' : 'false'}" data-thumbsniper-template="${tsConfig?.templateId || 'ts_01'}" data-thumbsniper-headline="${encodeURIComponent(tsHeadline)}" data-thumbsniper-subheadline="${encodeURIComponent(tsSubheadline)}" data-thumbsniper-button="${encodeURIComponent(tsButtonText)}" data-thumbsniper-color="${tsButtonColor}" data-thumbsniper-custom="${tsConfig?.customMediaUrl || ''}" data-thumbsniper-lang="${isSpanishTs ? 'es' : 'pt'}" style="display: block; width: 100%; max-width: 100%; margin: 0 auto; clear: both; position: relative;"></div>
 </div>
-<script src="${origin}/player.js?v=2.5.0" async></script>`;
+<script src="${origin}/player.js?v=2.6.0" async></script>`;
 
   // Format 2: Self-contained Inline JavaScript with Hls.js loader, Smart Autoplay & ThumbSniper
   const inlineJsEmbedCode = `<veloturb-smartplayer id="vid-${video.id}" style="display: block; margin: 0 auto; width: 100%; max-width: 100%;">
   <div class="veloturb-player-placeholder" style="position: relative; width: 100%; padding-bottom: 56.25%; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
     
-    <!-- Smart Autoplay Unmute Hook -->
-    <div id="veloturb-unmute-${video.id}" class="vt-inline-unmute" style="position: absolute; ${autoplayPosStyle} ${isFullWidthAutoplay ? 'width: 100%; max-width: 100%; left: 0; transform: none;' : 'max-width: 94%;'} z-index: 40; background: ${bannerColors.bg}; color: ${bannerColors.text}; opacity: ${autoplayOpacity / 100}; padding: ${autoplayShape === 'two_lines' ? '10px 18px' : '8px 18px'}; border-radius: ${autoplayBorderRadius}; font-weight: 800; font-size: 13.5px; font-family: system-ui, -apple-system, sans-serif; display: flex; ${autoplayShape === 'two_lines' ? 'flex-direction: column;' : ''} align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; box-sizing: border-box;">
-      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
-        <!-- Ícone Som Mudo (Esquerda) -->
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-          <line x1="23" y1="9" x2="17" y2="15"></line>
-          <line x1="17" y1="9" x2="23" y2="15"></line>
-        </svg>
-        <span style="font-weight: 800; letter-spacing: -0.2px; line-height: 1.25;">${autoplayText}</span>
-        <!-- Ícone Som Ativo com Ondas (Direita) -->
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-        </svg>
+    <!-- Smart Autoplay Unmute Hook com Wrapper Full-Width (Garante 100% de centralização) -->
+    <div id="veloturb-unmute-wrapper-${video.id}" style="position: absolute; ${autoplayWrapperPosStyle} z-index: 40; display: flex; pointer-events: none; box-sizing: border-box; padding: 0 8px;">
+      <div id="veloturb-unmute-${video.id}" class="vt-inline-unmute" style="position: relative; pointer-events: auto; ${isCenteredPosition ? 'margin: 0 auto;' : ''} ${isFullWidthAutoplay ? 'width: 100%; max-width: 100%;' : 'max-width: 94%;'} background: ${bannerColors.bg}; color: ${bannerColors.text}; opacity: ${autoplayOpacity / 100}; padding: ${autoplayShape === 'two_lines' ? '10px 18px' : '8px 18px'}; border-radius: ${autoplayBorderRadius}; font-weight: 800; font-size: 13.5px; font-family: system-ui, -apple-system, sans-serif; display: flex; ${autoplayShape === 'two_lines' ? 'flex-direction: column;' : ''} align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4); text-align: center; box-sizing: border-box;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+          <!-- Ícone Som Mudo (Esquerda) -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+          <span style="font-weight: 800; letter-spacing: -0.2px; line-height: 1.25;">${autoplayText}</span>
+          <!-- Ícone Som Ativo com Ondas (Direita) -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        </div>
+        ${autoplayShape === 'two_lines' ? `<div style="font-size: 11px; opacity: 0.92; font-weight: 600;">${autoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')}</div>` : ''}
       </div>
-      ${autoplayShape === 'two_lines' ? `<div style="font-size: 11px; opacity: 0.92; font-weight: 600;">${autoplaySubtext || (isSpanishTs ? 'Haz clic para escuchar el audio 🔊' : 'Clique aqui para ativar o áudio 🔊')}</div>` : ''}
     </div>
 
     <!-- Video Element -->
@@ -180,6 +184,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
 <script type="text/javascript">
 (function() {
   var v = document.getElementById('veloturb-vid-${video.id}');
+  var bw = document.getElementById('veloturb-unmute-wrapper-${video.id}');
   var b = document.getElementById('veloturb-unmute-${video.id}');
   var bar = document.getElementById('veloturb-bar-${video.id}');
   var ts = document.getElementById('veloturb-thumbsniper-${video.id}');
@@ -220,6 +225,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
       v.muted = false;
       v.volume = 1;
       v.play();
+      if (bw) bw.style.display = 'none';
       if (b) b.style.display = 'none';
     } catch(e) {}
   }
@@ -229,7 +235,7 @@ export const EmbedCodeModal: React.FC<EmbedCodeModalProps> = ({
     b.addEventListener('touchend', function(e) { e.preventDefault(); e.stopPropagation(); unmuteAndRestartFromZero(); }, { passive: false });
   }
   v.onclick = function() {
-    if (v.muted || (b && b.style.display !== 'none')) {
+    if (v.muted || (bw && bw.style.display !== 'none') || (b && b.style.display !== 'none')) {
       unmuteAndRestartFromZero();
     } else if (v.paused) {
       v.play();
