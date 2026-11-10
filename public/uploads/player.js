@@ -218,6 +218,7 @@
 
     // Autoplay Banner Layout & Position Styles
     // Wrapper Flexbox que garante alinhamento exato no centro em Desktop e Mobile (sem ser quebrado por @keyframes ou transforms)
+    var isFullWidth = smartAutoplayShape === 'full_width';
     var wrapperPositionStyle = '';
     var isCenteredPos = smartAutoplayPos === 'top' || smartAutoplayPos === 'bottom' || smartAutoplayPos === 'center';
     switch (smartAutoplayPos) {
